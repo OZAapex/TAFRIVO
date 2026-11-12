@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="theme-color" content="#082e24"/>
+<title>تواصل معنا | TAFRIVO</title>
+<meta name="description" content="تواصل مع فريق TAFRIVO بخصوص التسجيل أو الدعم أو الخصوصية."/>
+<link rel="canonical" href="https://ozaapex.github.io/TAFRIVO/contact.html"/>
+<link rel="icon" type="image/png" href="assets/favicon.png"/>
+<link rel="stylesheet" href="style.css"/>
+</head>
+<body><header class="topbar"><div class="topin wrap"><a class="logo" href="https://ozaapex.github.io/TAFRIVO/"><img src="assets/logo.webp" alt="TAFRIVO"><span>TAFRIVO</span></a><nav class="legal-nav"><a href="https://ozaapex.github.io/TAFRIVO/">الرئيسية</a><a href="privacy.html">الخصوصية</a><a href="terms.html">الشروط</a><a href="contact.html">التواصل</a></nav></div></header><main class="wrap legal-shell"><div class="panel"><h1>تواصل معنا</h1><p>عندك مطعم حابب ينضم، استفسار تقني، أو طلب بخصوص الخصوصية؟ ابعتلنا رسالة من هون، وبتوصل مباشرة إلى لوحة إدارة TAFRIVO.</p>
+<p class="legal-meta">الرد حسب توفر فريق المنصة خلال المرحلة التجريبية. ما تبعث كلمات مرور أو معلومات بطاقات أو بيانات حساسة في الرسالة.</p>
+<div id="contact-feedback" class="banner hide" role="status" aria-live="polite"></div>
+<form id="contact-form" class="contact-grid" autocomplete="on">
+  <div class="field contact-field"><label for="sender_name">الاسم *</label><input id="sender_name" name="sender_name" required minlength="2" maxlength="100" autocomplete="name" placeholder="اسمك"></div>
+  <div class="field contact-field"><label for="sender_email">الإيميل *</label><input id="sender_email" type="email" name="sender_email" required maxlength="254" autocomplete="email" placeholder="name@example.com"></div>
+  <div class="field contact-field span2"><label for="topic">موضوع الرسالة</label><select id="topic" name="topic"><option value="restaurant">تسجيل مطعم أو شراكة</option><option value="technical">مساعدة تقنية</option><option value="privacy">خصوصية وبيانات</option><option value="general">استفسار عام</option></select></div>
+  <div class="field contact-field span2"><label for="body">الرسالة *</label><textarea id="body" name="body" rows="5" required minlength="10" maxlength="2000" placeholder="اكتب استفسارك هون بالتفصيل"></textarea></div>
+  <div class="honeypot" aria-hidden="true"><label>Company website <input name="website" tabindex="-1" autocomplete="off"></label></div>
+  <div class="span2"><label class="consent"><input type="checkbox" required name="privacy_ok"> أوافق على استخدام بيانات هذه الرسالة للرد عليها وفق <a href="privacy.html" target="_blank" rel="noopener">سياسة الخصوصية</a>.</label></div>
+  <div class="span2"><button id="contact-submit" class="btn gold" type="submit">إرسال الرسالة</button></div>
+</form>
+<section class="legal-lang" lang="he"><h2>יצירת קשר</h2><p>אפשר להשתמש בטופס כדי לפנות לגבי רישום מסעדות, תמיכה טכנית או בקשות בנושא פרטיות. אין לשלוח סיסמאות או פרטי כרטיסי אשראי.</p></section>
+<section class="legal-lang" dir="ltr" lang="en"><h2>Contact TAFRIVO</h2><p>Use the form above for restaurant onboarding, technical support, and privacy requests. Please do not include passwords or payment card details.</p></section></div></main><footer class="footer"><div class="wrap"><span>© TAFRIVO · Digital Menus, Beautifully Simple</span><span><a href="privacy.html">الخصوصية</a> · <a href="terms.html">الشروط</a> · <a href="contact.html">تواصل معنا</a></span></div></footer><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0" defer></script>
+<script src="config.js" defer></script><script src="contact.js" defer></script></body></html>

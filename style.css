@@ -5,3 +5,29 @@
 .menu-page{min-height:100vh;background:#f7f8f4}.menu-hero{background:linear-gradient(125deg,#0a382c,#184939);padding:30px 0;color:white}.menu-hero h1{font-size:28px;margin-top:9px}.menu-hero p{color:#c0d9ce;font-size:13px}.menu-nav{display:flex;align-items:center;justify-content:space-between;gap:15px}.lang-switch{display:flex;gap:3px}.lang-switch button{background:#1a5946;border:1px solid #49715e;color:white;border-radius:8px;padding:7px 10px;font-size:11px}.lang-switch button.active{background:var(--gold);color:#163a2c}.menu-main{max-width:900px;margin:28px auto;padding:0 20px 100px}.menu-cat{margin:32px 0 16px;font-weight:900;font-size:23px}.itemcard{display:flex;align-items:center;justify-content:space-between;gap:15px;background:white;border:1px solid var(--border);border-radius:17px;padding:16px;margin:12px 0}.itemcard img{width:90px;height:90px;object-fit:cover;border-radius:14px;flex:0 0 90px}.itemcard h3{margin:0 0 4px}.itemcard p{font-size:12px;color:var(--muted);margin:0}.item-price{color:#1b6048;font-weight:900;font-size:16px;white-space:nowrap}.item-right{display:flex;align-items:center;gap:12px;min-width:0}.cartbar{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);z-index:10;background:#092d23;color:white;border:1px solid #a28854;border-radius:17px;min-width:min(92vw,510px);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;gap:10px;box-shadow:0 9px 40px #001b1280}.cartbar button{border:0;background:var(--gold);color:var(--green);font-weight:900;padding:8px 16px;border-radius:10px}.menu-sticky{position:sticky;top:0;background:#fffefded;backdrop-filter:blur(12px);z-index:5;overflow:auto;border-bottom:1px solid var(--border)}.menu-sticky .wrap{display:flex;gap:7px;white-space:nowrap;overflow:auto;padding:11px 0}.menu-sticky a{border:1px solid #c8d5cc;border-radius:30px;padding:4px 14px;font-size:12px}.callout{font-size:12px;margin-top:8px;color:#8e6b23}.empty-panel{text-align:center;padding:34px}.pending-icon{font-size:50px;margin-bottom:5px}
 @media (max-width:850px){.hero-inner{grid-template-columns:1fr}.hero{padding:42px 0}.demo-phone{margin:0 auto;max-width:300px}.features,.stats{grid-template-columns:repeat(2,1fr)}.two{grid-template-columns:1fr}.navlinks{display:none}.formgrid{grid-template-columns:1fr}.span2{grid-column:auto}.dark-cta .wrap{display:block}.dark-cta .btn{margin-top:18px}}
 @media (max-width:540px){.wrap{width:min(100% - 26px,1190px)}.hero p{font-size:14px}.hero h1{font-size:33px}.features,.stats{grid-template-columns:1fr}.panel{padding:18px}.logo{font-size:17px;gap:8px}.logo img{width:35px;height:35px}.topbar .btn{font-size:11px;padding:7px 10px}.pagehead .wrap{flex-wrap:wrap}.pagehead h1{font-size:24px}.listcard{align-items:flex-start;flex-wrap:wrap}.itemcard{padding:11px;gap:8px}.itemcard img{width:66px;height:66px;flex-basis:66px}.itemcard h3{font-size:13px}.item-price{font-size:13px}.itemcard p{font-size:10px}.menu-hero h1{font-size:23px}.authwrap{margin:24px auto}}
+
+/* Public legal, support and account-consent screens */
+.footer a,.footer a:visited{color:inherit}.footer a:hover{text-decoration:underline}
+.consent{display:block;margin:11px 0 15px;line-height:1.9;color:var(--muted)}
+.consent input{margin-inline-end:6px;vertical-align:middle;accent-color:var(--green3)}
+.consent a{color:var(--green3);font-weight:800;text-decoration:underline}
+.legal-shell{max-width:890px;margin:40px auto 70px}
+.legal-shell .panel{padding:clamp(22px,4vw,52px)}
+.legal-shell h1{font-size:clamp(29px,4vw,42px)}
+.legal-shell h2{font-size:21px;margin:27px 0 9px}
+.legal-shell p,.legal-shell li{line-height:2;color:#355748}
+.legal-shell ul{padding-right:24px}
+.legal-shell .legal-lang{border-top:1px solid var(--border);margin-top:30px;padding-top:20px}
+.legal-shell .legal-lang[dir=ltr]{font-family:Manrope,system-ui,sans-serif}
+.legal-shell .legal-lang[dir=ltr] ul{padding-left:24px}
+.legal-meta{color:var(--muted);font-size:12px}
+.legal-nav{display:flex;gap:14px;flex-wrap:wrap;font-size:13px}
+.legal-nav a:hover{text-decoration:underline}
+.contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+.contact-grid .span2{grid-column:1/-1}
+.contact-field input,.contact-field textarea,.contact-field select{width:100%}
+.honeypot{position:absolute!important;left:-99999px!important;opacity:0!important;height:1px;overflow:hidden}
+.support-message{border:1px solid var(--border);border-radius:12px;padding:16px;margin:12px 0}
+.support-body{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.8;margin:13px 0}
+.support-email{color:var(--green3);text-decoration:underline;overflow-wrap:anywhere}
+@media(max-width:620px){.legal-shell{margin:20px auto 40px}.contact-grid{grid-template-columns:1fr}.contact-grid .span2{grid-column:auto}}
