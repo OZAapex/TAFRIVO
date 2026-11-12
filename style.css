@@ -44,3 +44,19 @@
 button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #b5903c;outline-offset:2px}
 @media(max-width:540px){.menu-main{padding-bottom:130px}.qrbox{align-items:center}.restaurant-menu-logo{width:58px;height:58px}.topin{flex-wrap:wrap;row-gap:8px;padding:12px 0}.topbar .actions{margin-inline-start:auto}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+/* Public restaurant applications */
+.join-shell{max-width:960px}
+.join-intro{background:linear-gradient(113deg,#0a3629,#135440);border:1px solid #b5995d;border-radius:21px;color:white;padding:clamp(22px,5vw,44px);margin-bottom:22px}
+.join-intro h1{font-size:clamp(30px,5vw,46px);margin-top:14px}
+.join-intro p{color:#d8ebdf;max-width:720px;font-size:15px}
+.join-chips{display:flex;flex-wrap:wrap;gap:9px;margin:19px 0 0}
+.join-chips span{border:1px solid #799789;border-radius:23px;padding:5px 13px;font-size:12px}
+.join-panel{padding:clamp(19px,4vw,40px)}
+.join-panel .flexbetween{gap:12px;flex-wrap:wrap}
+.join-submit{min-height:50px;min-width:min(100%,290px)}
+.join-after{margin-top:23px;border-radius:13px;padding:19px;background:var(--soft)}
+.join-after h3{margin-bottom:8px}
+.join-after p{margin:0}
+.phone-ltr{direction:ltr;display:inline-block;unicode-bidi:isolate}
+@media(max-width:620px){.join-intro{border-radius:15px}.join-submit{width:100%}}

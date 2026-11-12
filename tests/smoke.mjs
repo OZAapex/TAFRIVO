@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 const read = name => fs.readFileSync(name, 'utf8');
 const source = read('app.js');
 const homepage = read('index.html');
-const files = ['index.html','app.js','contact.js','config.js','style.css','contact.html','privacy.html','terms.html','sitemap.xml','manifest.webmanifest','assets/logo.webp','assets/favicon.png'];
+const files = ['index.html','app.js','contact.js','config.js','style.css','contact.html','join.html','join.js','privacy.html','terms.html','sitemap.xml','manifest.webmanifest','assets/logo.webp','assets/favicon.png'];
 for(const name of files)assert.ok(fs.existsSync(name), 'Missing launch file: '+name);
 
 assert.ok(homepage.includes('rel="canonical"'), 'Missing canonical metadata');
@@ -19,6 +19,8 @@ assert.ok(source.includes('data-act="toggle-registration"'), 'Admin registration
 assert.ok(source.includes('category-save'), 'Category editor missing');
 assert.ok(source.includes('uploadRestaurantImage'), 'Image uploader missing');
 assert.ok(read('contact.js').includes('contact_messages'), 'Contact form backend missing');
+assert.ok(read('join.js').includes('restaurant_leads'), 'Restaurant onboarding form missing');
+assert.ok(read('join.html').includes('id="join-form"'), 'Restaurant signup page missing');
 
 async function render({hash='',open=false,admin=false,menu=false}={}){
   const root={innerHTML:'',addEventListener(){}};
@@ -46,7 +48,8 @@ async function render({hash='',open=false,admin=false,menu=false}={}){
   return root.innerHTML;
 }
 const closed=await render();
-assert.ok(closed.includes('اطلب الانضمام'),'Closed onboarding needs working contact link');
+assert.ok(closed.includes('href="join.html"'),'Closed onboarding must show functioning restaurant application link');
+assert.ok(closed.includes('جرّب المنيو بنفسك'),'Demo preview missing from homepage');
 assert.ok(!closed.includes('href="#signup"'),'Closed onboarding must not invite signups');
 
 const opened=await render({open:true});
@@ -62,7 +65,8 @@ assert.ok(login.includes('#forgot-password'),'Missing password recovery link');
 const dashboard=await render({hash:'#app',admin:true});
 assert.ok(dashboard.includes('لوحة المدير العام')&&dashboard.includes('toggle-registration'),'Admin dashboard broken');
 assert.ok(dashboard.includes('رسائل التواصل'),'Support inbox missing');
+assert.ok(dashboard.includes('طلبات انضمام المطاعم'),'Restaurant leads missing from admin');
 
 const menu=await render({hash:'#menu/tafrivo-demo',menu:true});
 assert.ok(menu.includes('برغر')&&menu.includes('48'),'Public menu rendering broken');
-console.log('TAFRIVO smoke checks: 8 scenarios + static files + payment-secret guard PASSED');
+console.log('TAFRIVO smoke checks: 8 scenarios + leads onboarding + static files + payment-secret guard PASSED');
