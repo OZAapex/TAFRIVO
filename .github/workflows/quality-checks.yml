@@ -1,0 +1,24 @@
+name: TAFRIVO Quality Checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  smoke:
+    name: Frontend and security smoke tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax checks
+        run: |
+          node --check app.js
+          node --check contact.js
+      - name: Static and UI smoke checks
+        run: node tests/smoke.mjs
