@@ -28,7 +28,7 @@ async function render({hash='',open=false,admin=false,menu=false}={}){
   const tables={site_settings:{registration_open:open},account_profiles:{role:admin?'super_admin':'owner'},restaurants:menu?restaurant:[],restaurant_applications:[],restaurant_subscriptions:[],billing_plans:[],billing_payments:[],contact_messages:[],menu_categories:[{id:'cat-1',name_ar:'الوجبات',is_visible:true}],menu_items:[{id:'item-1',category_id:'cat-1',name_ar:'برغر',price_ils:48,is_visible:true,is_available:true}]};
   const query=table=>{
     const q={
-      select(){return q;},eq(){return q;},order(){return q;},gte(){return q;},lt(){return q;},limit(){return q;},
+      select(){return q;},eq(){return q;},order(){return q;},gte(){return q;},lt(){return q;},limit(){return q;},range(){return q;},ilike(){return q;},
       single(){return Promise.resolve({data:tables[table],error:null});},
       maybeSingle(){return Promise.resolve({data:tables[table],error:null});},
       then(resolve,reject){return Promise.resolve({data:tables[table],error:null}).then(resolve,reject);}
@@ -66,6 +66,7 @@ const dashboard=await render({hash:'#app',admin:true});
 assert.ok(dashboard.includes('لوحة المدير العام')&&dashboard.includes('toggle-registration'),'Admin dashboard broken');
 assert.ok(dashboard.includes('رسائل التواصل'),'Support inbox missing');
 assert.ok(dashboard.includes('طلبات انضمام المطاعم'),'Restaurant leads missing from admin');
+assert.ok(dashboard.includes('lead-search')&&dashboard.includes('leads-export'),'Lead search and CSV export missing');
 
 const menu=await render({hash:'#menu/tafrivo-demo',menu:true});
 assert.ok(menu.includes('برغر')&&menu.includes('48'),'Public menu rendering broken');

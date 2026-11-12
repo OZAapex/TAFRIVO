@@ -8,7 +8,7 @@
     return;
   }
   const sb = window.supabase.createClient(window.TAFRIVO_CONFIG.SUPABASE_URL, window.TAFRIVO_CONFIG.SUPABASE_PUBLISHABLE_KEY);
-  const state = { user:null, role:'owner', restaurant:null, restaurants:[], applications:[], categories:[], items:[], tab:'items', lang:'ar', cart:{}, notice:null, itemEdit:null, menu:null, billingSubscriptions:[], billingPlans:[], billingPayments:[], contactMessages:[], registrationOpen:false, catEdit:null, restaurantLeads:[] };
+  const state = { user:null, role:'owner', restaurant:null, restaurants:[], applications:[], categories:[], items:[], tab:'items', lang:'ar', cart:{}, notice:null, itemEdit:null, menu:null, billingSubscriptions:[], billingPlans:[], billingPayments:[], contactMessages:[], registrationOpen:false, catEdit:null, restaurantLeads:[], leadsPage:0, leadsCount:0, leadsPageSize:60, newLeadsCount:0, leadsFilter:'all', leadsSearch:'' };
   const e = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const url = v => /^https:\/\//i.test(v || '') ? e(v) : '';
   const money = v => `${Number(v || 0).toLocaleString('he-IL',{minimumFractionDigits:0,maximumFractionDigits:2})} ₪`;
@@ -75,7 +75,14 @@
 }
   async function loadAdmin(){
  const mon=jerusalemBillingMonth();
- const [r,a,subs,plans,payments,contacts,site,leads]=await Promise.all([
+ const leadStart=state.leadsPage*state.leadsPageSize;
+ const leadQuery=sb.from('restaurant_leads')
+  .select('id,restaurant_name,city,contact_name,contact_phone,contact_email,menu_url,notes,status,created_at,reviewed_at,restaurant_id',{count:'exact'})
+  .order('created_at',{ascending:false})
+  .range(leadStart,leadStart+state.leadsPageSize-1);
+ if(state.leadsFilter!=='all')leadQuery.eq('status',state.leadsFilter);
+ if(state.leadsSearch.trim())leadQuery.ilike('restaurant_name','%'+state.leadsSearch.trim()+'%');
+ const [r,a,subs,plans,payments,contacts,site,leads,newLeads]=await Promise.all([
   sb.from('restaurants').select('*').order('created_at',{ascending:false}),
   sb.from('restaurant_applications').select('*'),
   sb.from('restaurant_subscriptions').select('id,restaurant_id,plan_code,status,current_period_start,current_period_end,grace_until,last_paid_at,next_payment_at,cancel_at_period_end').order('created_at',{ascending:false}),
@@ -83,7 +90,8 @@
   sb.from('billing_payments').select('restaurant_id,amount_ils,paid_at,status').eq('status','paid').gte('paid_at',mon.firstISO).lt('paid_at',mon.endISO),
   sb.from('contact_messages').select('id,sender_name,sender_email,topic,body,status,created_at').order('created_at',{ascending:false}).limit(40),
   sb.from('site_settings').select('registration_open').eq('id',1).single(),
-  sb.from('restaurant_leads').select('id,restaurant_name,city,contact_name,contact_phone,contact_email,menu_url,notes,status,created_at,reviewed_at,restaurant_id').order('created_at',{ascending:false}).limit(250)
+  leadQuery,
+  sb.from('restaurant_leads').select('id',{count:'exact',head:true}).eq('status','new')
  ]);
  state.restaurants=need(r)||[];
  state.applications=need(a)||[];
@@ -93,6 +101,8 @@
  state.contactMessages=need(contacts)||[];
  state.registrationOpen=Boolean(need(site)?.registration_open);
  state.restaurantLeads=need(leads)||[];
+ state.leadsCount=Number(leads.count??state.restaurantLeads.length);
+ state.newLeadsCount=Number(newLeads.count??state.restaurantLeads.filter(x=>x.status==='new').length);
  renderAdmin();
 }
   function renderAdminBilling(){
@@ -121,7 +131,7 @@
 }
   function renderSignupControl(){return `<section class="panel" style="margin-bottom:22px"><div class="flexbetween"><h2>فتح التسجيل للمطاعم</h2><span class="tag ${state.registrationOpen?'approved':'pending'}">${state.registrationOpen?'التسجيل مفتوح':'التسجيل مغلق مؤقتًا'}</span></div><p class="muted small">لما تكون مغلقة، المطاعم بتتواصل معنا عبر نموذج التواصل. فعّل التسجيل بعد ضبط SMTP والتحقق من رسالة التأكيد وتجربة حساب مستقل. لا يشمل هذا الخيار الدفع.</p><button class="btn ${state.registrationOpen?'outline':'gold'}" data-act="toggle-registration">${state.registrationOpen?'إيقاف التسجيل المباشر':'فتح التسجيل المباشر'}</button></section>`;}
 function renderAdminLeads(){
-    const leads=state.restaurantLeads||[], pending=leads.filter(x=>x.status==='new');
+    const leads=state.restaurantLeads||[], pending=state.newLeadsCount;
     const statuses={new:'طلب جديد',contacted:'تم التواصل',onboarding:'جاري التجهيز',completed:'انضم',declined:'اعتذر'};
     const buttons=x=>[['contacted','تم التواصل'],['onboarding','جاري التجهيز'],['completed','انضم'],['declined','اعتذر']]
       .filter(([id])=>x.status!==id)
@@ -137,11 +147,16 @@ function renderAdminLeads(){
       const link=x.menu_url&&/^https:\/\//i.test(x.menu_url)?`<p class="small"><a target="_blank" rel="noopener noreferrer" href="${e(x.menu_url)}"><u>المنيو أو صفحة المطعم</u></a></p>`:'';
       return `<article class="support-message"><div class="flexbetween"><div><h3 style="margin:0 0 3px">${e(x.restaurant_name)}</h3><p class="small muted" style="margin:0">${e(x.city)} · ${e(x.contact_name)} · ${e(new Date(x.created_at).toLocaleString('ar-IL',{timeZone:'Asia/Jerusalem'}))}</p></div><span class="tag ${x.status==='completed'?'approved':'pending'}">${statuses[x.status]||'قيد المراجعة'}</span></div><p class="small">📞 <b class="phone-ltr">${e(x.contact_phone)}</b> · ${mail}</p>${link}${x.notes?`<p class="support-body small">${e(x.notes)}</p>`:''}<div class="actions">${wa}${build}${buttons(x)}</div></article>`;
     }).join(''):'<div class="empty">ما وصل أي طلب انضمام حتى الآن.</div>';
-    return `<section class="panel" id="leads-inbox" style="margin-bottom:22px"><div class="flexbetween"><h2>طلبات انضمام المطاعم</h2><span class="tag pending">${pending.length} جديد</span></div><p class="muted small">هاي الطلبات جاية مباشرة من صفحة «سجّل مطعمك» بدون إنشاء حساب. اضغط «إنشاء منيو للمطعم» لتجهيز قائمة الطعام فورًا بدون انتظار بريد تسجيل الحساب. أبقِ النشر مغلقًا حتى تُدخل المحتوى وتراجع رقم واتساب المخصص للطلبات. ثم سلّم الحساب لصاحب المطعم بعد تأكيد إيميله.</p>${cards}</section>`;
+    const filters=[['all','الكل'],['new','جديدة'],['contacted','تم التواصل'],['onboarding','تحت التجهيز'],['completed','انضمت'],['declined','اعتذرت']];
+    const filterButtons=filters.map(([id,name])=>`<button class="btn ${state.leadsFilter===id?'gold':'outline'} small" data-act="lead-filter" data-id="${id}">${name}</button>`).join('');
+    const pages=Math.max(1,Math.ceil(state.leadsCount/state.leadsPageSize));
+    const current=Math.min(state.leadsPage+1,pages);
+    const pager=`<div class="flexbetween" style="margin-top:15px"><p class="muted small" style="margin:0">صفحة ${current} من ${pages} · ${state.leadsCount} طلب مطابق</p><div class="actions"><button type="button" class="btn outline small" data-act="leads-prev" ${state.leadsPage===0?'disabled':''}>السابق</button><button type="button" class="btn outline small" data-act="leads-next" ${current>=pages?'disabled':''}>التالي</button></div></div>`;
+    return `<section class="panel" id="leads-inbox" style="margin-bottom:22px"><div class="flexbetween"><h2>طلبات انضمام المطاعم</h2><span class="tag pending">${pending} جديد</span></div><p class="muted small">اضغط «إنشاء منيو للمطعم» لتجهيز القائمة بدون انتظار بريد تسجيل الحساب. أبقِ النشر مغلقًا حتى تراجع الصور والواتساب، ثم سلّم الحساب لصاحبه بعد تأكيد إيميله.</p><div class="actions" style="margin:8px 0 14px;flex-wrap:wrap">${filterButtons}</div><form data-form="lead-search" class="actions" style="margin-bottom:14px"><input name="lead_name" aria-label="ابحث باسم المطعم" maxlength="100" placeholder="ابحث باسم المطعم…" value="${e(state.leadsSearch)}" style="flex:1;min-width:150px"><button type="submit" class="btn soft small">بحث</button><button type="button" class="btn outline small" data-act="lead-clear-search">مسح</button><button type="button" class="btn outline small" data-act="leads-export">تنزيل CSV للصفحة</button></form>${cards}${pager}</section>`;
   }
     function renderAdmin(){const rests=state.restaurants, apps=state.applications;
     const count=s=>rests.filter(r=>r.status===s).length;
-    root.innerHTML=`${shell('لوحة المدير العام','Super Admin · أنت تدير كل المطاعم والطلبات')}<main class="wrap dash"><div id="message">${errBox()}</div><div class="stats"><div class="stat"><strong>${rests.length}</strong><span>كل المطاعم</span></div><div class="stat"><strong>${count('pending')}</strong><span>طلبات قيد المراجعة</span></div><div class="stat"><strong>${count('approved')}</strong><span>مطاعم موافق عليها</span></div><div class="stat"><strong>${count('suspended')}</strong><span>حسابات موقوفة</span></div></div>${renderAdminLeads()}${renderSignupControl()}<div class="actions" style="margin:16px 0 22px"><button class="btn gold" data-act="leadsjump">🏪 طلبات انضمام المطاعم (${state.restaurantLeads.filter(x=>x.status==='new').length})</button><button class="btn outline" data-act="billingjump">💳 الاشتراكات والإيرادات</button><button class="btn outline" data-act="contactjump">✉️ رسائل التواصل</button></div><section class="panel"><div class="flexbetween"><h2>طلبات المطاعم وإدارتها</h2><button data-act="reload" class="btn outline small">تحديث</button></div>${rests.length?`<div class="tablewrap"><table class="table"><thead><tr><th>المطعم</th><th>مقدم الطلب</th><th>التاريخ</th><th>الحالة</th><th>الإجراءات</th></tr></thead><tbody>${rests.map(r=>{const a=apps.find(x=>x.restaurant_id===r.id);return `<tr><td><b>${e(r.name)}</b><div class="small muted">${e(r.city||'—')} · ${e(r.slug)}</div></td><td>${e(a?.contact_name||'—')}<div class="small muted">${e(a?.contact_email||'')}</div></td><td>${e(new Date(r.created_at).toLocaleDateString('ar'))}</td><td><span class="tag ${cls(r.status)}">${status(r.status)}</span></td><td><div class="actions">${r.status==='approved'?`<a class="btn soft small" href="#manage/${e(r.id)}">إدارة المنيو</a>`:''}${r.status!=='approved'?`<button class="btn soft small" data-act="approve" data-id="${e(r.id)}">موافقة</button>`:''}${r.status!=='rejected'?`<button class="btn danger small" data-act="reject" data-id="${e(r.id)}">رفض</button>`:''}${r.status==='approved'?`<button class="btn outline small" data-act="suspend" data-id="${e(r.id)}">إيقاف</button>`:''}</div></td></tr>`}).join('')}</tbody></table></div>`:`<div class="empty">ما في طلبات تسجيل مطاعم حتى الآن.</div>`}</section>${renderAdminBilling()}${renderAdminContacts()}<div class="panel" style="margin-top:22px"><h3>صلاحيات الإدارة</h3><p class="muted small">هذه اللوحة مخصصة لمدير TAFRIVO. عمليات الموافقة تُنفَّذ على قاعدة البيانات المحمية، مش مجرد إخفاء أزرار.</p><div class="small">User ID: <code class="display-url">${e(userId())}</code></div></div></main>${footer()}`;
+    root.innerHTML=`${shell('لوحة المدير العام','Super Admin · أنت تدير كل المطاعم والطلبات')}<main class="wrap dash"><div id="message">${errBox()}</div><div class="stats"><div class="stat"><strong>${rests.length}</strong><span>كل المطاعم</span></div><div class="stat"><strong>${count('pending')}</strong><span>طلبات قيد المراجعة</span></div><div class="stat"><strong>${count('approved')}</strong><span>مطاعم موافق عليها</span></div><div class="stat"><strong>${count('suspended')}</strong><span>حسابات موقوفة</span></div></div>${renderAdminLeads()}${renderSignupControl()}<div class="actions" style="margin:16px 0 22px"><button class="btn gold" data-act="leadsjump">🏪 طلبات انضمام المطاعم (${state.newLeadsCount})</button><button class="btn outline" data-act="billingjump">💳 الاشتراكات والإيرادات</button><button class="btn outline" data-act="contactjump">✉️ رسائل التواصل</button></div><section class="panel"><div class="flexbetween"><h2>طلبات المطاعم وإدارتها</h2><button data-act="reload" class="btn outline small">تحديث</button></div>${rests.length?`<div class="tablewrap"><table class="table"><thead><tr><th>المطعم</th><th>مقدم الطلب</th><th>التاريخ</th><th>الحالة</th><th>الإجراءات</th></tr></thead><tbody>${rests.map(r=>{const a=apps.find(x=>x.restaurant_id===r.id);return `<tr><td><b>${e(r.name)}</b><div class="small muted">${e(r.city||'—')} · ${e(r.slug)}</div></td><td>${e(a?.contact_name||'—')}<div class="small muted">${e(a?.contact_email||'')}</div></td><td>${e(new Date(r.created_at).toLocaleDateString('ar'))}</td><td><span class="tag ${cls(r.status)}">${status(r.status)}</span></td><td><div class="actions">${r.status==='approved'?`<a class="btn soft small" href="#manage/${e(r.id)}">إدارة المنيو</a>`:''}${r.status!=='approved'?`<button class="btn soft small" data-act="approve" data-id="${e(r.id)}">موافقة</button>`:''}${r.status!=='rejected'?`<button class="btn danger small" data-act="reject" data-id="${e(r.id)}">رفض</button>`:''}${r.status==='approved'?`<button class="btn outline small" data-act="suspend" data-id="${e(r.id)}">إيقاف</button>`:''}</div></td></tr>`}).join('')}</tbody></table></div>`:`<div class="empty">ما في طلبات تسجيل مطاعم حتى الآن.</div>`}</section>${renderAdminBilling()}${renderAdminContacts()}<div class="panel" style="margin-top:22px"><h3>صلاحيات الإدارة</h3><p class="muted small">هذه اللوحة مخصصة لمدير TAFRIVO. عمليات الموافقة تُنفَّذ على قاعدة البيانات المحمية، مش مجرد إخفاء أزرار.</p><div class="small">User ID: <code class="display-url">${e(userId())}</code></div></div></main>${footer()}`;
   }
   async function changeStatus(id,newStatus){
     const r=state.restaurants.find(x=>x.id===id);if(!r)return;
@@ -209,6 +224,10 @@ function renderAdminLeads(){
     return sb.storage.from('menu-images').getPublicUrl(path).data.publicUrl;
   }
   async function submitForm(form){const type=form.dataset.form,F=new FormData(form),g=k=>String(F.get(k)||'').trim();const button=form.querySelector('[type=submit],button:not([type])');if(button)button.disabled=true;try{
+    if(type==='lead-search'){
+      state.leadsSearch=g('lead_name').slice(0,100);
+      state.leadsPage=0;clearNotice();await loadAdmin();return;
+    }
     if(type==='login'){need(await sb.auth.signInWithPassword({email:g('email'),password:g('password')}));clearNotice();go('#app');return;}
     if(type==='forgot-password'){need(await sb.auth.resetPasswordForEmail(g('email'),{redirectTo:location.origin+location.pathname+'#reset-password'}));flash('إذا البريد مسجّل، رح يصلك رابط استعادة بعد إعداد خدمة البريد.');return;}
     if(type==='reset-password'){if(g('password').length<12)throw Error('كلمة المرور الجديدة لازم تكون 12 حرفًا أو أكثر.');need(await sb.auth.updateUser({password:g('password')}));await sb.auth.signOut();alert('تم تغيير كلمة المرور. سجّل دخولك بكلمة المرور الجديدة.');go('#login');return;}
@@ -249,6 +268,26 @@ function renderAdminLeads(){
     if(act==='reload'){clearNotice();route();return;}
     if(act==='toggle-registration'){const target=!state.registrationOpen;if(target&&!confirm('هل ضبطت SMTP واختبرت إرسال الإيميلات وتسجيل مطعم مستقل؟'))return;try{need(await sb.from('site_settings').update({registration_open:target}).eq('id',1).select('id').single());state.registrationOpen=target;await loadAdmin();}catch(err){flash(errText(err),'error');}return;}
     if(act==='leadsjump'){document.getElementById('leads-inbox')?.scrollIntoView({behavior:'smooth',block:'start'});return;}
+    if(act==='lead-filter'){
+      const allowed=['all','new','contacted','onboarding','completed','declined'];
+      if(!allowed.includes(id))return;
+      state.leadsFilter=id;state.leadsPage=0;clearNotice();await loadAdmin();return;
+    }
+    if(act==='lead-clear-search'){state.leadsSearch='';state.leadsPage=0;clearNotice();await loadAdmin();return;}
+    if(act==='leads-prev'||act==='leads-next'){
+      const next=state.leadsPage+(act==='leads-next'?1:-1);
+      if(next<0||next*state.leadsPageSize>=state.leadsCount)return;
+      state.leadsPage=next;clearNotice();await loadAdmin();return;
+    }
+    if(act==='leads-export'){
+      if(!state.restaurantLeads.length){flash('ما في بيانات لتصديرها في الصفحة الحالية.','error');return;}
+      const keys=['restaurant_name','city','contact_name','contact_phone','contact_email','menu_url','notes','status','created_at'];
+      const quote=v=>{let s=String(v??'');if(['=','+','@','-'].includes(s.trimStart().charAt(0)))s="'"+s;return '"'+s.replace(/"/g,'""')+'"';};
+      const csv=String.fromCharCode(0xfeff)+[keys.join(','),...state.restaurantLeads.map(lead=>keys.map(k=>quote(lead[k])).join(','))].join(String.fromCharCode(13,10));
+      const objectUrl=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+      const a=document.createElement('a');a.href=objectUrl;a.download='TAFRIVO-leads-page-'+(state.leadsPage+1)+'.csv';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(objectUrl),2000);
+      return;
+    }
     if(act==='lead-create-menu'){
       if(state.role!=='super_admin')return;
       const lead=state.restaurantLeads.find(x=>x.id===id);
