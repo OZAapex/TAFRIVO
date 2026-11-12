@@ -60,3 +60,34 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .join-after p{margin:0}
 .phone-ltr{direction:ltr;display:inline-block;unicode-bidi:isolate}
 @media(max-width:620px){.join-intro{border-radius:15px}.join-submit{width:100%}}
+
+/* Printable B2B restaurant presentation */
+.pitch-shell{max-width:1080px;margin:30px auto 60px}
+.pitch-hero{border-radius:24px;background:radial-gradient(circle at 20% 20%,#23664b,#0a3126 65%);padding:clamp(28px,5vw,52px);color:#fff}
+.pitch-logo{display:flex;align-items:center;gap:13px;direction:ltr;justify-content:flex-end;font:800 28px Manrope,sans-serif;letter-spacing:1.5px}
+.pitch-logo img{width:48px;height:48px;object-fit:cover;border-radius:12px}
+.pitch-hero .eyebrow{margin-top:10px}
+.pitch-hero h1{font-size:clamp(30px,5vw,54px);margin:9px 0 16px}
+.pitch-hero h1 strong{color:var(--gold2)}
+.pitch-hero p{max-width:690px;color:#d4e9db;line-height:1.95}
+.pitch-benefits{display:flex;flex-wrap:wrap;gap:8px}
+.pitch-benefits span{background:#ffffff16;border:1px solid #ffffff33;padding:4px 11px;border-radius:23px;font-size:12px}
+.pitch-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin:22px 0}
+.pitch-card{text-align:center;padding:26px!important}
+.pitch-card-accent{border:2px solid #c3a36a}
+.pitch-card-icon{font-size:28px;margin-bottom:4px}
+.pitch-card p{color:var(--muted);min-height:54px}
+.pitch-qr-frame{background:#fff;border:1px solid #ddd;border-radius:14px;padding:15px;width:max-content;max-width:100%;margin:16px auto 20px}
+.pitch-qr-frame canvas{display:block;max-width:100%;height:auto}
+.pitch-action{margin-bottom:9px}
+.pitch-steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.pitch-steps div{padding:12px;border:1px solid var(--border);border-radius:13px;display:grid;gap:7px}
+.pitch-steps b{color:var(--green3);font:800 23px Manrope,sans-serif}
+.pitch-steps span{font-size:13px}
+.pitch-hebrew{text-align:center;margin:24px 0;padding:18px;background:var(--soft);border-radius:16px}
+.pitch-hebrew h2{margin:0 0 8px;font-size:22px}
+.pitch-hebrew p{margin:0}
+.pitch-footer{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin:24px 0}
+.pitch-note{text-align:center;color:var(--muted);font-size:11px;overflow-wrap:anywhere}
+@media(max-width:690px){.pitch-shell{margin-top:15px}.pitch-cards{grid-template-columns:1fr}.pitch-steps{grid-template-columns:repeat(2,1fr)}.pitch-card p{min-height:0}}
+@media print{@page{size:A4;margin:12mm}body{background:#fff!important;color:#111;-webkit-print-color-adjust:exact;print-color-adjust:exact}.pitch-hide-print{display:none!important}.pitch-shell{width:100%!important;max-width:none!important;margin:0}.pitch-hero{padding:18px!important;border-radius:10px}.pitch-hero h1{font-size:29px!important}.pitch-benefits span{font-size:10px}.pitch-cards{gap:10px;margin:14px 0}.pitch-card{padding:12px!important;break-inside:avoid}.pitch-card h2{font-size:20px}.pitch-card p{font-size:11px;min-height:0}.pitch-qr-frame{margin:9px auto}.pitch-qr-frame canvas{width:145px;height:145px}.pitch-action{font-size:11px}.pitch-process{padding:12px!important}.pitch-process h2{font-size:19px}.pitch-steps div{padding:8px}.pitch-steps span{font-size:10px}.pitch-hebrew{padding:10px;margin:10px 0}.pitch-hebrew h2{font-size:18px}.pitch-hebrew p{font-size:11px}.pitch-note{font-size:9px}a{color:inherit!important}}

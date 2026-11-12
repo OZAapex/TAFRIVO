@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 const read = name => fs.readFileSync(name, 'utf8');
 const source = read('app.js');
 const homepage = read('index.html');
-const files = ['index.html','app.js','contact.js','config.js','style.css','contact.html','join.html','join.js','privacy.html','terms.html','sitemap.xml','manifest.webmanifest','assets/logo.webp','assets/favicon.png'];
+const files = ['index.html','app.js','contact.js','config.js','style.css','contact.html','join.html','join.js','pitch.html','pitch.js','privacy.html','terms.html','sitemap.xml','manifest.webmanifest','assets/logo.webp','assets/favicon.png'];
 for(const name of files)assert.ok(fs.existsSync(name), 'Missing launch file: '+name);
 
 assert.ok(homepage.includes('rel="canonical"'), 'Missing canonical metadata');
@@ -21,6 +21,7 @@ assert.ok(source.includes('uploadRestaurantImage'), 'Image uploader missing');
 assert.ok(read('contact.js').includes('contact_messages'), 'Contact form backend missing');
 assert.ok(read('join.js').includes('restaurant_leads'), 'Restaurant onboarding form missing');
 assert.ok(read('join.html').includes('id="join-form"'), 'Restaurant signup page missing');
+assert.ok(read('pitch.html').includes('pitch-join-qr')&&read('pitch.js').includes('QRCode.toCanvas'), 'Printed outreach QR page is missing');
 
 async function render({hash='',open=false,admin=false,menu=false}={}){
   const root={innerHTML:'',addEventListener(){}};
