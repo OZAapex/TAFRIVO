@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="theme-color" content="#082e24"/>
+<title>سجّل مطعمك | TAFRIVO</title>
+<meta name="description" content="سجّل مطعمك في TAFRIVO. منيو إلكتروني للمطاعم والمقاهي مع صور وأسعار وQR. قدّم طلب الانضمام بسهولة دون إنشاء حساب."/>
+<meta property="og:type" content="website"/>
+<meta property="og:title" content="TAFRIVO — سجّل مطعمك"/>
+<meta property="og:description" content="منيو رقمي، رمز QR، صور وأسعار وطلبات واتساب. قدّم طلب انضمام مطعمك."/>
+<meta property="og:url" content="https://ozaapex.github.io/TAFRIVO/join.html"/>
+<meta property="og:image" content="https://ozaapex.github.io/TAFRIVO/assets/logo.webp"/>
+<link rel="canonical" href="https://ozaapex.github.io/TAFRIVO/join.html"/>
+<link rel="icon" type="image/png" href="assets/favicon.png"/>
+<link rel="stylesheet" href="style.css?v=20261112"/>
+</head>
+<body>
+<header class="topbar"><div class="topin wrap"><a class="logo" href="https://ozaapex.github.io/TAFRIVO/"><img src="assets/logo.webp" alt="TAFRIVO"><span>TAFRIVO</span></a><nav class="legal-nav"><a href="https://ozaapex.github.io/TAFRIVO/">الرئيسية</a><a href="contact.html">التواصل</a><a href="privacy.html">الخصوصية</a></nav></div></header>
+<main class="wrap legal-shell join-shell">
+<section class="join-intro">
+  <span class="eyebrow">✦ انضم إلى TAFRIVO</span>
+  <h1>منيو مطعمك صار أسهل.</h1>
+  <p>خلي زبائنك يفتحوا المنيو بكود QR، ويشوفوا الأكلات والصور والأسعار على تلفوناتهم. عبّي طلب الانضمام وإحنا بنتابع معك.</p>
+  <div class="join-chips"><span>📱 منيو للموبايل</span><span>📷 صور وأسعار</span><span>🟩 QR للمطعم</span><span>💬 طلبات واتساب</span></div>
+</section>
+<section class="panel join-panel">
+  <div class="flexbetween"><h2>طلب انضمام مطعم</h2><span class="tag approved">استقبال الطلبات مفتوح</span></div>
+  <p class="muted small">التقديم ما بده إيميل تأكيد أو إنشاء حساب. هذا طلب تسجيل للمراجعة والتواصل، مش تفعيل تلقائي للمنيو. لا نطلب دفعًا الآن.</p>
+  <div id="join-feedback" class="banner hide" role="status" aria-live="polite"></div>
+  <form id="join-form" class="contact-grid" autocomplete="on">
+    <div class="field contact-field"><label for="restaurant_name">اسم المطعم أو المقهى *</label><input id="restaurant_name" name="restaurant_name" required minlength="2" maxlength="160" placeholder="مثال: مطعم الزيتون"></div>
+    <div class="field contact-field"><label for="city">البلد أو المدينة *</label><input id="city" name="city" required minlength="2" maxlength="100" placeholder="مثال: عرابة"></div>
+    <div class="field contact-field"><label for="contact_name">اسم صاحب المطعم / المسؤول *</label><input id="contact_name" name="contact_name" required minlength="2" maxlength="120" autocomplete="name" placeholder="الاسم الكامل"></div>
+    <div class="field contact-field"><label for="contact_phone">رقم هاتف أو واتساب *</label><input id="contact_phone" name="contact_phone" type="tel" required minlength="9" maxlength="24" autocomplete="tel" inputmode="tel" placeholder="05xxxxxxxx"></div>
+    <div class="field contact-field"><label for="contact_email">البريد الإلكتروني (اختياري)</label><input id="contact_email" name="contact_email" type="email" maxlength="254" autocomplete="email" placeholder="name@example.com"></div>
+    <div class="field contact-field"><label for="menu_url">رابط المنيو الحالي أو إنستغرام (اختياري)</label><input id="menu_url" name="menu_url" type="url" maxlength="400" placeholder="https://..."></div>
+    <div class="field contact-field span2"><label for="notes">ملاحظات (اختياري)</label><textarea id="notes" name="notes" rows="3" maxlength="900" placeholder="مثلًا: عندنا منيو PDF، أو نحتاج عربي وعبري"></textarea></div>
+    <div class="honeypot" aria-hidden="true"><label>Website <input name="website" tabindex="-1" autocomplete="off"></label></div>
+    <div class="span2"><label class="consent"><input type="checkbox" name="privacy_ok" required> أوافق على استخدام بيانات التواصل لمتابعة طلب الانضمام وفق <a href="privacy.html" target="_blank" rel="noopener">سياسة الخصوصية</a>.</label></div>
+    <div class="span2"><button id="join-submit" type="submit" class="btn gold join-submit">أرسل طلب انضمام المطعم</button></div>
+  </form>
+  <div class="join-after"><h3>شو بصير بعد تقديم الطلب؟</h3><p>بنراجع البيانات، بنتواصل مع المسؤول، وبعد الموافقة بنساعدكم بتجهيز المنيو والـQR. الاشتراكات المدفوعة غير مفعّلة حاليًا.</p></div>
+</section>
+<section class="legal-lang" dir="rtl" lang="he"><h2>הרשמת מסעדות — TAFRIVO</h2><p>אפשר להגיש בקשת הצטרפות ללא יצירת חשבון: שם המסעדה, יישוב וטלפון. הבקשה נשלחת לבדיקת צוות השירות. אין חיוב או תשלום בשלב זה.</p></section>
+<section class="legal-lang" dir="ltr" lang="en"><h2>Restaurant onboarding</h2><p>Submit your restaurant's details without creating an account. Our team reviews requests and follows up. No payment is taken at this stage.</p></section>
+</main>
+<footer class="footer"><div class="wrap"><span>© TAFRIVO</span><span><a href="privacy.html">الخصوصية</a> · <a href="terms.html">الشروط</a> · <a href="contact.html">تواصل معنا</a></span></div></footer>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0" defer></script>
+<script src="config.js" defer></script>
+<script src="join.js?v=20261112" defer></script>
+</body></html>
