@@ -8,7 +8,7 @@
     return;
   }
   const sb = window.supabase.createClient(window.TAFRIVO_CONFIG.SUPABASE_URL, window.TAFRIVO_CONFIG.SUPABASE_PUBLISHABLE_KEY);
-  const state = { user:null, role:'owner', restaurant:null, restaurants:[], applications:[], categories:[], items:[], tab:'items', lang:'ar', cart:{}, notice:null, itemEdit:null, menu:null };
+  const state = { user:null, role:'owner', restaurant:null, restaurants:[], applications:[], categories:[], items:[], tab:'items', lang:'ar', cart:{}, notice:null, itemEdit:null, menu:null, billingSubscriptions:[], billingPlans:[], billingPayments:[] };
   const e = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const url = v => /^https:\/\//i.test(v || '') ? e(v) : '';
   const money = v => `${Number(v || 0).toLocaleString('he-IL',{minimumFractionDigits:0,maximumFractionDigits:2})} ₪`;
@@ -53,10 +53,45 @@
     home();
   }
   function shell(title,subtitle,actions=''){return `${nav(`<a class="btn outline" href="#app">لوحة التحكم</a><button class="btn gold" data-act="signout">خروج</button>`)}<div class="pagehead"><div class="wrap"><div><h1>${title}</h1><p>${subtitle}</p></div>${actions}</div></div>`;}
-  async function loadAdmin(){const [r,a]=await Promise.all([sb.from('restaurants').select('*').order('created_at',{ascending:false}),sb.from('restaurant_applications').select('*')]);state.restaurants=need(r)||[];state.applications=need(a)||[];renderAdmin();}
+  function jerusalemBillingMonth(){
+ const fields=new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Jerusalem',year:'numeric',month:'numeric'}).formatToParts(new Date());
+ const y=Number(fields.find(x=>x.type==='year').value), m=Number(fields.find(x=>x.type==='month').value);
+ return {year:y,month:m,firstISO:new Date(Date.UTC(y,m-1,1)-2*86400000).toISOString(),endISO:new Date(Date.UTC(y,m,1)+2*86400000).toISOString(),label:new Intl.DateTimeFormat('ar-IL',{month:'long',year:'numeric',timeZone:'Asia/Jerusalem'}).format(new Date())};
+}
+  async function loadAdmin(){
+ const mon=jerusalemBillingMonth();
+ const [r,a,subs,plans,payments]=await Promise.all([
+  sb.from('restaurants').select('*').order('created_at',{ascending:false}),
+  sb.from('restaurant_applications').select('*'),
+  sb.from('restaurant_subscriptions').select('id,restaurant_id,plan_code,status,current_period_start,current_period_end,grace_until,last_paid_at,next_payment_at,cancel_at_period_end').order('created_at',{ascending:false}),
+  sb.from('billing_plans').select('code,name_ar,amount_ils,status,sort_order').order('sort_order'),
+  sb.from('billing_payments').select('restaurant_id,amount_ils,paid_at,status').eq('status','paid').gte('paid_at',mon.firstISO).lt('paid_at',mon.endISO)
+ ]);
+ state.restaurants=need(r)||[];
+ state.applications=need(a)||[];
+ state.billingSubscriptions=need(subs)||[];
+ state.billingPlans=need(plans)||[];
+ state.billingPayments=need(payments)||[];
+ renderAdmin();
+}
+  function renderAdminBilling(){
+ const mon=jerusalemBillingMonth();
+ const formatMonth=d=>{const ps=new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Jerusalem',year:'numeric',month:'numeric'}).formatToParts(new Date(d));return [Number(ps.find(x=>x.type==='year').value),Number(ps.find(x=>x.type==='month').value)];};
+ const payments=state.billingPayments.filter(p=>p.status==='paid'&&p.paid_at&&(()=>{const [y,m]=formatMonth(p.paid_at);return y===mon.year&&m===mon.month;})());
+ const revenue=payments.reduce((sum,p)=>sum+Number(p.amount_ils||0),0);
+ const sub=state.billingSubscriptions,planByCode=new Map(state.billingPlans.map(p=>[p.code,p]));
+ const active=sub.filter(s=>s.status==='active');
+ const recurring=active.reduce((sum,s)=>sum+Number(planByCode.get(s.plan_code)?.amount_ils||0),0);
+ const label=s=>({pending:'بانتظار الدفع',trialing:'تجربة',active:'فعّال',past_due:'دفعة متأخرة',paused:'موقوف',canceled:'ملغي',expired:'منتهي'})[s]||s;
+ const date=v=>v?new Intl.DateTimeFormat('ar-IL',{timeZone:'Asia/Jerusalem',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(v)):'—';
+ const statusTag=s=>s==='active'?'approved':s==='past_due'?'suspended':'pending';
+ const paidList=sub.length?`<div class="tablewrap"><table class="table"><thead><tr><th>المطعم</th><th>الباقة</th><th>حالة الاشتراك</th><th>قيمة الباقة الشهرية</th><th>التجديد القادم</th><th>آخر دفع مؤكد</th></tr></thead><tbody>${sub.map(s=>{const r=state.restaurants.find(x=>x.id===s.restaurant_id),p=planByCode.get(s.plan_code);return `<tr><td><b>${e(r?.name||'مطعم غير متاح')}</b></td><td>${e(p?.name_ar||s.plan_code)}</td><td><span class="tag ${statusTag(s.status)}">${e(label(s.status))}</span></td><td>${p?money(p.amount_ils):'—'}</td><td>${date(s.next_payment_at||s.current_period_end)}</td><td>${date(s.last_paid_at)}</td></tr>`}).join('')}</tbody></table></div>`:'<div class="empty">لا توجد اشتراكات مدفوعة مسجّلة حتى الآن.</div>';
+ const drafts=state.billingPlans.filter(p=>p.status==='draft').map(p=>`${e(p.name_ar)} (${money(p.amount_ils)})`).join(' · ');
+ return `<section class="panel" id="billing-overview" style="margin-top:22px"><div class="flexbetween"><h2>الاشتراكات والإيرادات</h2><span class="tag pending">بوابة الدفع قيد الربط</span></div><p class="muted small">إيرادات ${e(mon.label)} محسوبة من الدفعات المؤكدة المسجلة في Supabase فقط. موافقة المطعم أو نشر المنيو لا تعني أنه اشترك أو دفع.</p><div class="stats"><div class="stat"><strong>${active.length}</strong><span>اشتراكات فعّالة</span></div><div class="stat"><strong>${money(revenue)}</strong><span>المحصّل هذا الشهر</span></div><div class="stat"><strong>${money(recurring)}</strong><span>قيمة الاشتراكات النشطة شهريًا (متوقعة)</span></div><div class="stat"><strong>${sub.filter(x=>x.status==='past_due').length}</strong><span>اشتراكات بدفعات متأخرة</span></div></div><h3>المطاعم المشتركة</h3>${paidList}<p class="muted small" style="margin-top:18px">التجديد الآلي غير مُفعّل بعد. لا تُدخل أي أرقام بطاقات أو مفاتيح SUMIT في ملفات GitHub.${drafts?' الباقات المقترحة (مسودات غير منشورة): '+drafts:''}</p></section>`;
+}
   function renderAdmin(){const rests=state.restaurants, apps=state.applications;
     const count=s=>rests.filter(r=>r.status===s).length;
-    root.innerHTML=`${shell('لوحة المدير العام','Super Admin · أنت تدير كل المطاعم والطلبات')}<main class="wrap dash"><div id="message">${errBox()}</div><div class="stats"><div class="stat"><strong>${rests.length}</strong><span>كل المطاعم</span></div><div class="stat"><strong>${count('pending')}</strong><span>طلبات قيد المراجعة</span></div><div class="stat"><strong>${count('approved')}</strong><span>مطاعم موافق عليها</span></div><div class="stat"><strong>${count('suspended')}</strong><span>حسابات موقوفة</span></div></div><section class="panel"><div class="flexbetween"><h2>طلبات المطاعم وإدارتها</h2><button data-act="reload" class="btn outline small">تحديث</button></div>${rests.length?`<div class="tablewrap"><table class="table"><thead><tr><th>المطعم</th><th>مقدم الطلب</th><th>التاريخ</th><th>الحالة</th><th>الإجراءات</th></tr></thead><tbody>${rests.map(r=>{const a=apps.find(x=>x.restaurant_id===r.id);return `<tr><td><b>${e(r.name)}</b><div class="small muted">${e(r.city||'—')} · ${e(r.slug)}</div></td><td>${e(a?.contact_name||'—')}<div class="small muted">${e(a?.contact_email||'')}</div></td><td>${e(new Date(r.created_at).toLocaleDateString('ar'))}</td><td><span class="tag ${cls(r.status)}">${status(r.status)}</span></td><td><div class="actions">${r.status==='approved'?`<a class="btn soft small" href="#manage/${e(r.id)}">إدارة المنيو</a>`:''}${r.status!=='approved'?`<button class="btn soft small" data-act="approve" data-id="${e(r.id)}">موافقة</button>`:''}${r.status!=='rejected'?`<button class="btn danger small" data-act="reject" data-id="${e(r.id)}">رفض</button>`:''}${r.status==='approved'?`<button class="btn outline small" data-act="suspend" data-id="${e(r.id)}">إيقاف</button>`:''}</div></td></tr>`}).join('')}</tbody></table></div>`:`<div class="empty">ما في طلبات تسجيل مطاعم حتى الآن.</div>`}</section><div class="panel" style="margin-top:22px"><h3>صلاحيات الإدارة</h3><p class="muted small">هذه اللوحة مخصصة لمدير TAFRIVO. عمليات الموافقة تُنفَّذ على قاعدة البيانات المحمية، مش مجرد إخفاء أزرار.</p><div class="small">User ID: <code class="display-url">${e(userId())}</code></div></div></main>${footer()}`;
+    root.innerHTML=`${shell('لوحة المدير العام','Super Admin · أنت تدير كل المطاعم والطلبات')}<main class="wrap dash"><div id="message">${errBox()}</div><div class="stats"><div class="stat"><strong>${rests.length}</strong><span>كل المطاعم</span></div><div class="stat"><strong>${count('pending')}</strong><span>طلبات قيد المراجعة</span></div><div class="stat"><strong>${count('approved')}</strong><span>مطاعم موافق عليها</span></div><div class="stat"><strong>${count('suspended')}</strong><span>حسابات موقوفة</span></div></div><section class="panel"><div class="flexbetween"><h2>طلبات المطاعم وإدارتها</h2><button data-act="reload" class="btn outline small">تحديث</button></div>${rests.length?`<div class="tablewrap"><table class="table"><thead><tr><th>المطعم</th><th>مقدم الطلب</th><th>التاريخ</th><th>الحالة</th><th>الإجراءات</th></tr></thead><tbody>${rests.map(r=>{const a=apps.find(x=>x.restaurant_id===r.id);return `<tr><td><b>${e(r.name)}</b><div class="small muted">${e(r.city||'—')} · ${e(r.slug)}</div></td><td>${e(a?.contact_name||'—')}<div class="small muted">${e(a?.contact_email||'')}</div></td><td>${e(new Date(r.created_at).toLocaleDateString('ar'))}</td><td><span class="tag ${cls(r.status)}">${status(r.status)}</span></td><td><div class="actions">${r.status==='approved'?`<a class="btn soft small" href="#manage/${e(r.id)}">إدارة المنيو</a>`:''}${r.status!=='approved'?`<button class="btn soft small" data-act="approve" data-id="${e(r.id)}">موافقة</button>`:''}${r.status!=='rejected'?`<button class="btn danger small" data-act="reject" data-id="${e(r.id)}">رفض</button>`:''}${r.status==='approved'?`<button class="btn outline small" data-act="suspend" data-id="${e(r.id)}">إيقاف</button>`:''}</div></td></tr>`}).join('')}</tbody></table></div>`:`<div class="empty">ما في طلبات تسجيل مطاعم حتى الآن.</div>`}</section>${renderAdminBilling()}<div class="panel" style="margin-top:22px"><h3>صلاحيات الإدارة</h3><p class="muted small">هذه اللوحة مخصصة لمدير TAFRIVO. عمليات الموافقة تُنفَّذ على قاعدة البيانات المحمية، مش مجرد إخفاء أزرار.</p><div class="small">User ID: <code class="display-url">${e(userId())}</code></div></div></main>${footer()}`;
   }
   async function changeStatus(id,newStatus){
     const r=state.restaurants.find(x=>x.id===id);if(!r)return;
