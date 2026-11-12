@@ -21,5 +21,6 @@ jobs:
           node --check app.js
           node --check contact.js
           node --check join.js
+          node --check pitch.js
       - name: Static and UI smoke checks
         run: node tests/smoke.mjs
