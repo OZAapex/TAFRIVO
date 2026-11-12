@@ -83,7 +83,7 @@
   sb.from('billing_payments').select('restaurant_id,amount_ils,paid_at,status').eq('status','paid').gte('paid_at',mon.firstISO).lt('paid_at',mon.endISO),
   sb.from('contact_messages').select('id,sender_name,sender_email,topic,body,status,created_at').order('created_at',{ascending:false}).limit(40),
   sb.from('site_settings').select('registration_open').eq('id',1).single(),
-  sb.from('restaurant_leads').select('id,restaurant_name,city,contact_name,contact_phone,contact_email,menu_url,notes,status,created_at,reviewed_at').order('created_at',{ascending:false}).limit(250)
+  sb.from('restaurant_leads').select('id,restaurant_name,city,contact_name,contact_phone,contact_email,menu_url,notes,status,created_at,reviewed_at,restaurant_id').order('created_at',{ascending:false}).limit(250)
  ]);
  state.restaurants=need(r)||[];
  state.applications=need(a)||[];
@@ -130,10 +130,14 @@ function renderAdminLeads(){
       const phone=safePhone(x.contact_phone),wa=phone.length>=10&&phone.length<=15
         ?`<a class="btn soft small" target="_blank" rel="noopener noreferrer" href="https://wa.me/${phone}?text=${encodeURIComponent('مرحبًا، معك فريق TAFRIVO بخصوص تسجيل '+x.restaurant_name+' في المنيو الإلكتروني.')}">واتساب</a>`:'';
       const mail=x.contact_email?`<a class="support-email" href="mailto:${e(x.contact_email)}">${e(x.contact_email)}</a>`:'—';
+      const activeRestaurant=state.restaurants.find(r=>r.id===x.restaurant_id);
+      const build=activeRestaurant
+        ?`<a href="#manage/${e(activeRestaurant.id)}" class="btn gold small">إدارة المنيو</a><span class="small muted">${activeRestaurant.is_published?'المنيو منشور':'المنيو بحاجة لنشر'}</span>`
+        :x.status==='declined'?'':`<button class="btn gold small" data-act="lead-create-menu" data-id="${e(x.id)}">إنشاء منيو للمطعم</button>`;
       const link=x.menu_url&&/^https:\/\//i.test(x.menu_url)?`<p class="small"><a target="_blank" rel="noopener noreferrer" href="${e(x.menu_url)}"><u>المنيو أو صفحة المطعم</u></a></p>`:'';
-      return `<article class="support-message"><div class="flexbetween"><div><h3 style="margin:0 0 3px">${e(x.restaurant_name)}</h3><p class="small muted" style="margin:0">${e(x.city)} · ${e(x.contact_name)} · ${e(new Date(x.created_at).toLocaleString('ar-IL',{timeZone:'Asia/Jerusalem'}))}</p></div><span class="tag ${x.status==='completed'?'approved':'pending'}">${statuses[x.status]||'قيد المراجعة'}</span></div><p class="small">📞 <b class="phone-ltr">${e(x.contact_phone)}</b> · ${mail}</p>${link}${x.notes?`<p class="support-body small">${e(x.notes)}</p>`:''}<div class="actions">${wa}${buttons(x)}</div></article>`;
+      return `<article class="support-message"><div class="flexbetween"><div><h3 style="margin:0 0 3px">${e(x.restaurant_name)}</h3><p class="small muted" style="margin:0">${e(x.city)} · ${e(x.contact_name)} · ${e(new Date(x.created_at).toLocaleString('ar-IL',{timeZone:'Asia/Jerusalem'}))}</p></div><span class="tag ${x.status==='completed'?'approved':'pending'}">${statuses[x.status]||'قيد المراجعة'}</span></div><p class="small">📞 <b class="phone-ltr">${e(x.contact_phone)}</b> · ${mail}</p>${link}${x.notes?`<p class="support-body small">${e(x.notes)}</p>`:''}<div class="actions">${wa}${build}${buttons(x)}</div></article>`;
     }).join(''):'<div class="empty">ما وصل أي طلب انضمام حتى الآن.</div>';
-    return `<section class="panel" id="leads-inbox" style="margin-bottom:22px"><div class="flexbetween"><h2>طلبات انضمام المطاعم</h2><span class="tag pending">${pending.length} جديد</span></div><p class="muted small">هاي الطلبات جاية مباشرة من صفحة «سجّل مطعمك» بدون إنشاء حساب. اضغط واتساب للتواصل وغيّر حالة الطلب بعد المتابعة.</p>${cards}</section>`;
+    return `<section class="panel" id="leads-inbox" style="margin-bottom:22px"><div class="flexbetween"><h2>طلبات انضمام المطاعم</h2><span class="tag pending">${pending.length} جديد</span></div><p class="muted small">هاي الطلبات جاية مباشرة من صفحة «سجّل مطعمك» بدون إنشاء حساب. اضغط «إنشاء منيو للمطعم» لتجهيز قائمة الطعام فورًا بدون انتظار بريد تسجيل الحساب. أبقِ النشر مغلقًا حتى تُدخل المحتوى وتراجع رقم واتساب المخصص للطلبات. ثم سلّم الحساب لصاحب المطعم بعد تأكيد إيميله.</p>${cards}</section>`;
   }
     function renderAdmin(){const rests=state.restaurants, apps=state.applications;
     const count=s=>rests.filter(r=>r.status===s).length;
@@ -175,7 +179,7 @@ function renderAdminLeads(){
   }
   function ownerSettings(){const r=state.restaurant;return `<section class="panel" style="max-width:760px"><h2>إعدادات المطعم</h2><form data-form="restaurant-settings"><div class="field"><label>اسم المطعم</label><input name="name" maxlength="160" value="${e(r.name)}" required></div><div class="field"><label>المدينة</label><input name="city" maxlength="120" value="${e(r.city||'')}"></div><div class="field"><label>وصف المطعم</label><textarea name="description" maxlength="1000">${e(r.description||'')}</textarea></div><div class="field"><label>رقم واتساب للطلبات</label><input name="public_phone" type="tel" maxlength="24" placeholder="05xxxxxxxx" value="${e(r.public_phone||'')}"></div><div class="formgrid"><div class="field"><label>شعار المطعم (JPG / PNG / WEBP)</label>${url(r.logo_url)?`<img class="settings-photo settings-logo" src="${url(r.logo_url)}" alt="شعار المطعم الحالي">`:''}<input type="file" name="logo_file" accept="image/jpeg,image/png,image/webp"></div><div class="field"><label>صورة غلاف المنيو (JPG / PNG / WEBP)</label>${url(r.cover_url)?`<img class="settings-photo settings-cover" src="${url(r.cover_url)}" alt="الغلاف الحالي">`:''}<input type="file" name="cover_file" accept="image/jpeg,image/png,image/webp"></div></div><p class="small muted">حجم كل صورة 5MB كحد أقصى. يُفضّل صور واضحة وأصلية للمطعم.</p><div class="field"><label><input type="checkbox" name="is_published" ${r.is_published?'checked':''}> نشر المنيو للزبائن</label></div><button class="btn gold">حفظ إعدادات المطعم</button></form></section>`;}
     function ownerQR(){const r=state.restaurant,link=`${location.origin}${location.pathname}#menu/${encodeURIComponent(r.slug)}`;return `<section class="panel"><h2>رابط المنيو ورمز QR</h2><p class="muted">هذا الرابط ثابت. أي تغيير على المنيو بيظهر على نفس الرابط.</p><div class="qrbox"><div><div id="qr-target"></div></div><div style="flex:1;min-width:220px"><div class="banner ${r.is_published?'':'warn'}">${r.is_published?'المنيو منشور للزبائن':'المنيو غير منشور. فعّله من الإعدادات حتى يفتح للزبائن.'}</div><p class="display-url">${e(link)}</p><div class="actions"><button class="btn soft" data-act="copy" data-value="${e(link)}">نسخ الرابط</button>${r.is_published?`<a class="btn outline" href="#menu/${encodeURIComponent(r.slug)}" target="_blank" rel="noopener">فتح المنيو</a>`:'<span class="small muted">انشر المنيو أولًا عشان يفتح للزبائن</span>'}<button class="btn outline" data-act="download-qr">تنزيل QR</button></div></div></div></section>`;}
-  function renderOwner(){const r=state.restaurant;root.innerHTML=`${shell(state.role==='super_admin'?'إدارة منيو المطعم':'لوحة مطعمك',`أهلًا في ${e(r.name)} · حسابك مُفعّل`,r.is_published?'<span class="tag approved">المنيو منشور</span>':'<span class="tag pending">المنيو غير منشور</span>')}${state.role==='super_admin'?'<div class="wrap" style="padding-top:18px"><a class="btn outline small" href="#app">← العودة للوحة المدير</a></div>':''}<main class="wrap dash"><div id="message">${errBox()}</div><div class="stats"><div class="stat"><strong>${state.categories.length}</strong><span>الأقسام</span></div><div class="stat"><strong>${state.items.length}</strong><span>الأكلات</span></div><div class="stat"><strong>${state.items.filter(x=>x.is_available).length}</strong><span>الأكلات المتوفرة</span></div><div class="stat"><strong>${r.is_published?'✓':'—'}</strong><span>حالة النشر</span></div></div>${tabs()}${state.tab==='categories'?ownerCategories():state.tab==='settings'?ownerSettings():state.tab==='qr'?ownerQR():ownerItems()}</main>${footer()}`;
+  function renderOwner(){const r=state.restaurant;root.innerHTML=`${shell(state.role==='super_admin'?'إدارة منيو المطعم':'لوحة مطعمك',`أهلًا في ${e(r.name)} · حسابك مُفعّل`,r.is_published?'<span class="tag approved">المنيو منشور</span>':'<span class="tag pending">المنيو غير منشور</span>')}${state.role==='super_admin'?`<div class="wrap" style="padding-top:18px"><div class="actions"><a class="btn outline small" href="#app">← العودة للوحة المدير</a><button class="btn soft small" data-act="transfer-owner">تسليم إدارة المطعم لصاحبه</button></div><p class="small muted" style="margin-top:9px">هذه الخطوة تحتاج حسابًا مؤكدًا بإيميل صاحب المطعم. لا تُشارك كلمة مرور حساب المدير معه.</p></div>`:''}<main class="wrap dash"><div id="message">${errBox()}</div><div class="stats"><div class="stat"><strong>${state.categories.length}</strong><span>الأقسام</span></div><div class="stat"><strong>${state.items.length}</strong><span>الأكلات</span></div><div class="stat"><strong>${state.items.filter(x=>x.is_available).length}</strong><span>الأكلات المتوفرة</span></div><div class="stat"><strong>${r.is_published?'✓':'—'}</strong><span>حالة النشر</span></div></div>${tabs()}${state.tab==='categories'?ownerCategories():state.tab==='settings'?ownerSettings():state.tab==='qr'?ownerQR():ownerItems()}</main>${footer()}`;
     if(state.tab==='qr')drawQR();
   }
   function drawQR(){const target=document.getElementById('qr-target');if(!target)return;const r=state.restaurant,link=`${location.origin}${location.pathname}#menu/${encodeURIComponent(r.slug)}`;if(window.QRCode?.toCanvas){const canvas=document.createElement('canvas');target.append(canvas);window.QRCode.toCanvas(canvas,link,{width:218,margin:2,color:{dark:'#103c2c',light:'#ffffff'}}).catch(()=>{target.textContent='تعذر رسم QR';});}else target.innerHTML='<div class="banner warn">مكتبة QR غير متاحة. انسخ الرابط لحين تشغيلها.</div>';}
@@ -245,6 +249,38 @@ function renderAdminLeads(){
     if(act==='reload'){clearNotice();route();return;}
     if(act==='toggle-registration'){const target=!state.registrationOpen;if(target&&!confirm('هل ضبطت SMTP واختبرت إرسال الإيميلات وتسجيل مطعم مستقل؟'))return;try{need(await sb.from('site_settings').update({registration_open:target}).eq('id',1).select('id').single());state.registrationOpen=target;await loadAdmin();}catch(err){flash(errText(err),'error');}return;}
     if(act==='leadsjump'){document.getElementById('leads-inbox')?.scrollIntoView({behavior:'smooth',block:'start'});return;}
+    if(act==='lead-create-menu'){
+      if(state.role!=='super_admin')return;
+      const lead=state.restaurantLeads.find(x=>x.id===id);
+      if(!lead)return;
+      if(lead.restaurant_id){go('#manage/'+lead.restaurant_id);return;}
+      const proposed=String(lead.restaurant_name||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+      const slug=prompt('اكتب رابط المنيو باللغة الإنجليزية (مثال: al-zaytoon). من الأفضل يكون اسم المطعم واضحًا:',proposed.length>=3?proposed:'restaurant-'+Math.random().toString(36).slice(2,7));
+      if(slug===null)return;
+      const normalized=slug.trim().toLowerCase();
+      if(!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(normalized)||normalized.length<3||normalized.length>60){flash('استخدم 3–60 حرفًا إنجليزيًا صغيرًا أو رقمًا مع شرطات بين الكلمات فقط.','error');return;}
+      if(!confirm('إنشاء منيو لـ«'+lead.restaurant_name+'»؟ سيظل المنيو غير منشور حتى تُكمل بياناته.'))return;
+      try{
+        const newId=need(await sb.rpc('create_restaurant_from_lead',{p_lead_id:id,p_slug:normalized}));
+        if(!newId)throw Error('لم يتم إرجاع معرّف المطعم الجديد');
+        clearNotice();go('#manage/'+newId);
+      }catch(err){flash('تعذر إنشاء المنيو: '+errText(err),'error');}
+      return;
+    }
+    if(act==='transfer-owner'){
+      if(state.role!=='super_admin'||!state.restaurant?.id)return;
+      const email=prompt('أدخل إيميل حساب TAFRIVO المؤكّد لصاحب المطعم. سيتمكن بعدها من إدارة مطعمه:');
+      if(email===null)return;
+      const cleaned=email.trim().toLowerCase();
+      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleaned)){flash('اكتب إيميلًا صحيحًا.','error');return;}
+      if(!confirm('هل تؤكد نقل إدارة «'+state.restaurant.name+'» إلى '+cleaned+'؟'))return;
+      try{
+        need(await sb.rpc('transfer_restaurant_owner',{p_restaurant_id:state.restaurant.id,p_owner_email:cleaned}));
+        flash('تم نقل الإدارة إلى صاحب الحساب المؤكّد.','');
+        await loadAdminRestaurant();
+      }catch(err){flash('تعذر نقل الإدارة: '+errText(err),'error');}
+      return;
+    }
     if(act==='lead-status'){
       const allowed=['new','contacted','onboarding','completed','declined'],next=el.dataset.next;
       if(!allowed.includes(next))return;
