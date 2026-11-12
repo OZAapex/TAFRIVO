@@ -1,33 +1,55 @@
-# TAFRIVO — GitHub Pages / Supabase
+# TAFRIVO — دليل تشغيل المنصة (نوفمبر 2026)
 
-## الحالة بتاريخ 12 نوفمبر 2026
-- مشروع Supabase: `TAFRIVO-production` (`trrwwmuixuvdhiotsnij`) في `eu-central-1` — Frankfurt.
-- حساب المدير: تم تفعيل `super_admin` في قاعدة البيانات؛ لم ننشر المستودع أو نختبر دخول الموقع المنشور بعد.
-- **لا تضع** Secret API key أو service_role أو كلمة مرور قاعدة البيانات في المستودع. `config.js` فيه Publishable key فقط، وهذا طبيعي لتطبيق المتصفح.
-- لا تزال خدمة البريد الافتراضية في Supabase محدودة، وإعداد SMTP مطلوب قبل فتح التسجيل للعامة.
+## الروابط
+- الموقع الرسمي التجريبي: https://ozaapex.github.io/TAFRIVO/
+- لوحة المدير: https://ozaapex.github.io/TAFRIVO/#app
+- منيو المطعم التجريبي: https://ozaapex.github.io/TAFRIVO/#menu/tafrivo-demo
+- نموذج التواصل: https://ozaapex.github.io/TAFRIVO/contact.html
+- الخصوصية: https://ozaapex.github.io/TAFRIVO/privacy.html
+- الشروط: https://ozaapex.github.io/TAFRIVO/terms.html
+- خريطة الموقع: https://ozaapex.github.io/TAFRIVO/sitemap.xml
 
-## النشر على GitHub Pages
-1. افتح https://github.com/new وأنشئ مستودعًا منفصلًا مثل `TAFRIVO` على حساب GitHub الذي ستستضيف عليه (لا تستعمل مستودع MISHRADAR).
-2. استخرج ملف ZIP وارفع **محتوياته** إلى **جذر** مستودع TAFRIVO عبر **Add file → Upload files**. تأكد وجود `index.html` في الجذر وليس داخل مجلد إضافي.
-3. من المستودع → Settings → Pages → Build and deployment → Source: `Deploy from a branch` → Branch: `main` → Folder: `/(root)` → Save.
-4. ستجد رابطًا من صيغة `https://USERNAME.github.io/TAFRIVO/` (استعمل رابطك الفعلي، هذا مثال فقط).
-5. افتح https://supabase.com/dashboard/project/trrwwmuixuvdhiotsnij/auth/url-configuration
-   - **Site URL**: الرابط الفعلي لـ GitHub Pages بنفس الشرطة المائلة النهائية.
-   - **Redirect URLs**: أضف الرابط الفعلي نفسه.
-   - لا تستخدم `localhost` كرابط موقع في الإنتاج.
-6. سجّل دخولك على الموقع بالإيميل وكلمة المرور اللذين أنشأتهما في Supabase. ادخل على `#app` من الواجهة. لازم تظهر **لوحة المدير**.
-7. قبل السماح للمطاعم بالتسجيل: اضبط SMTP في Supabase → Authentication → SMTP Settings، وجرب البريد، وسجل مطعمًا اختباريًا من حساب مختلف ووافق عليه، ثم أنشئ قسمًا وأكلة وجرّب نشر المنيو ورمز QR.
-8. راجع https://supabase.com/dashboard/project/trrwwmuixuvdhiotsnij/auth/providers و https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection لتقوية إعدادات كلمات المرور (ظهرت ملاحظة أمنية تخص حماية كلمات المرور المسرّبة).
+## الصلاحيات
+- **الزائر:** يقرأ المنيو المنشور فقط ويستطيع إرسال استفسار.
+- **صاحب المطعم:** ينشئ الحساب بعد تفعيل SMTP، يقدم طلب تسجيل، وينتظر قرار الإدارة. لا يستطيع نشر أو تحرير المنيو قبل الموافقة. بعد الموافقة يمكنه إدارة الأقسام والأكلات والصور والإعدادات.
+- **المدير العام:** وحده يوافق أو يرفض ويوقف المطاعم؛ يرى رسائل التواصل ويستطيع إدارة القوائم والصور لأي مطعم.
+- **التحقق:** آليات حماية الوصول في Supabase RLS ومشغلات قاعدة البيانات، ليست أزرار الواجهة.
 
-## صلاحيات النظام
-- الزائر: يرى المنيو المنشور لمطعم موافق عليه.
-- المطعم الجديد: يظل Pending إلى أن يوافق Super Admin.
-- المطعم الموافق عليه: يقدر يعدّل مطعمه وقائمته فقط.
-- Super Admin: يرى المطاعم ويتخذ قرارات الموافقة/الرفض/التوقيف.
-- الحماية الأساسية تتم عبر RLS في Supabase، وليس بمجرد إخفاء الأزرار.
+## الجاهزية الحالية
+- موقع GitHub Pages منشور والمحتوى قابل للتحديث.
+- قاعدة البيانات TAFRIVO-production فقط (project ref: trrwwmuixuvdhiotsnij). **لا تلمس** المشروع الآخر MISHRADAR.
+- التسجيل المباشر مغلق افتراضيًا، مع تحويل المطاعم إلى نموذج التواصل. لا يوقف ذلك دخول المطاعم الحالية.
+- استعادة كلمة المرور مجهزة في الواجهة، لكنها تحتاج SMTP لاستقبال الرسالة.
+- **الدفع الإلكتروني/الاشتراك المالي غير مفعّل** ولن تُحصَّل أي مبالغ قبل قرار الإدارة وإعداد المزوّد.
 
-## ملاحظات
-- ملفات الموقع static، ولا تحتاج إلى Node أو build لتعمل على GitHub Pages.
-- رابط المنيو مبني على `#menu/restaurant-slug` لذا يعمل مع GitHub Pages دون خادم خاص.
-- زر واتساب يُحضّر رسالة الطلب، ولا يوجد نظام دفع حقيقي أو تكامل مع المطبخ في النسخة الحالية.
-- لا تفتح التسجيل للجمهور قبل اختبار SMTP، الإعدادات، الأمان، وسياسة الخصوصية.
+## خطوات ضرورية قبل فتح التسجيل للجمهور
+1. أنشئ حسابًا عند مزوّد SMTP موثوق (مثل Brevo أو Resend)، وامتلك عنوان إرسال موثّقًا، والأفضل ضمن نطاق تملكه.
+2. افتح https://supabase.com/dashboard/project/trrwwmuixuvdhiotsnij/auth/smtp وفعّل Custom SMTP. اضبط بيانات Host/Port/Username/Password من مزوّدك في **Supabase Dashboard فقط**، لا ترفع كلمات المرور إلى GitHub ولا ترسلها في الدردشة.
+3. افتح https://supabase.com/dashboard/project/trrwwmuixuvdhiotsnij/auth/url-configuration وحدد Site URL = https://ozaapex.github.io/TAFRIVO/ وأضف نفس الرابط لقائمة Redirect URLs. اسمح بمسار استعادة كلمة المرور: https://ozaapex.github.io/TAFRIVO/ (تعالج الواجهة fragment).
+4. جرّب على بريد **آخر غير بريد المدير**: إنشاء حساب، وصول التأكيد، تسجيل دخول، تقديم طلب مطعم، رفض محاولة نشره قبل الموافقة، موافقة المدير، إضافة أقسام وأكلات وصور، نشر المنيو، فتح QR من هاتف آخر، إرسال طلب واتساب.
+5. جرّب أيضًا «نسيت كلمة المرور» بعد تهيئة SMTP.
+6. بعد نجاح التجربة، افتح لوحة Super Admin → **فتح التسجيل المباشر** ثم أكد. سيظهر زر «سجّل مطعمك» تلقائيًا للعموم.
+7. افتح https://supabase.com/dashboard/project/trrwwmuixuvdhiotsnij/auth/providers وتأكد تفعيل Confirm email.
+8. فحص الأمان: https://supabase.com/dashboard/project/trrwwmuixuvdhiotsnij/database/security-advisor — حماية كلمات المرور المسرّبة قد تحتاج خطة مدفوعة. إن لم تتوفر، حافظ على سياسة كلمات مرور طويلة وفعّلها لاحقًا.
+
+## Google والفهرسة
+- أضيفت البيانات الوصفية Open Graph وCanonical وملف sitemap.xml.
+- لإرسال الخريطة، أثبت ملكية https://ozaapex.github.io/TAFRIVO/ كـURL-prefix property في Search Console، ثم Sitemaps → sitemap.xml. **هذا لا يضمن الفهرسة.**
+- ملاحظة مهمة: https://ozaapex.github.io/TAFRIVO/robots.txt ليس ملف robots.txt على جذر النطاق؛ Google يبحث عن https://ozaapex.github.io/robots.txt. خريطة الموقع ما زالت قابلة للإرسال المباشر لـSearch Console.
+- روابط منيو المطاعم الحالية تستخدم الـhash (#menu/slug). ممتازة للـQR ومشاركة الرابط، لكن ليست صفحات SEO مستقلة قابلة للفهرسة تلقائيًا.
+
+## الموقع/الجهات القانونية
+- صفحة الخصوصية والشروط تغطيان الاستخدام التجريبي؛ قبل إطلاق اشتراكات تجارية أو توسع واسع، أضف هوية الجهة المشغّلة وتفاصيل الاتصال القانونية، وراجع النصوص مع مختص مناسب.
+- لا تقدّم وعودًا بتوصيل الطلب أو استقبال دفعات عبر الموقع: واتساب يجهّز رسالة اختيارية فقط.
+
+## إدارة المحتوى
+- من لوحة المطعم: أضف أقسامًا ثم الأكلات وحدد الأسعار والصور واللغات. يمكن تعديل أقسام المنيو وترتيبها، ولا يمكن حذف قسم يحتوي على أكلات قبل نقلها أو حذفها.
+- الصور المدعومة: JPG/PNG/WEBP حتى 5MB، وتخزن في bucket menu-images داخل مجلد UUID المطعم.
+- رمز QR ثابت لكل slug. احتفظ به قبل الطباعة ولا تغيّر الـslug باستخدام قاعدة البيانات مباشرة.
+
+## اختبار مختصر بعد أي تحديث
+- افتح الصفحة الرئيسية من نافذة خاصة.
+- افحص login وprivacy وterms وcontact.
+- جرّب فتح منيو منشور من نافذة لا تستخدم جلسة المدير.
+- ادخل لوحة المدير وافحص طلبات المطاعم والرسائل والإيرادات (الدفع مغلق).
+- تحقق من نجاح GitHub Actions → pages build and deployment.

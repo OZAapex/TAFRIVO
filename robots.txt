@@ -1,0 +1,5 @@
+# TAFRIVO: GitHub Pages project site under /TAFRIVO/.
+# Search engines request robots.txt from the origin root; this file is ready for custom-domain deployment.
+User-agent: *
+Allow: /
+Sitemap: https://ozaapex.github.io/TAFRIVO/sitemap.xml
