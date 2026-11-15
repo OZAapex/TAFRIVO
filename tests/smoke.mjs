@@ -22,6 +22,8 @@ assert.ok(read('contact.js').includes('contact_messages'), 'Contact form backend
 assert.ok(read('join.js').includes('restaurant_leads'), 'Restaurant onboarding form missing');
 assert.ok(read('join.html').includes('id="join-form"'), 'Restaurant signup page missing');
 assert.ok(read('pitch.html').includes('pitch-join-qr')&&read('pitch.js').includes('QRCode.toCanvas'), 'Printed outreach QR page is missing');
+for(const file of ['emails/confirm-signup.html','emails/reset-password.html']) { assert.ok(read(file).includes('{{ .ConfirmationURL }}'), 'Missing confirmation variable: '+file); assert.ok(read(file).includes('TAFRIVO'), 'Missing brand: '+file); }
+assert.ok(read('SMTP-SETUP-AR.md').includes('smtp-relay.brevo.com'), 'SMTP setup guide missing');
 
 async function render({hash='',open=false,admin=false,menu=false}={}){
   const root={innerHTML:'',addEventListener(){}};
