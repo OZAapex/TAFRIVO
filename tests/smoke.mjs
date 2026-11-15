@@ -4,11 +4,16 @@ import assert from 'node:assert/strict';
 
 const read = name => fs.readFileSync(name, 'utf8');
 const source = read('app.js');
+const i18n = read('public-language.js');
 const homepage = read('index.html');
-const files = ['index.html','app.js','contact.js','config.js','style.css','contact.html','join.html','join.js','pitch.html','pitch.js','privacy.html','terms.html','sitemap.xml','manifest.webmanifest','assets/logo.webp','assets/favicon.png'];
+const files = ['index.html','app.js','public-language.js','contact.js','config.js','style.css','contact.html','join.html','join.js','pitch.html','pitch.js','privacy.html','terms.html','sitemap.xml','manifest.webmanifest','assets/logo.webp','assets/favicon.png'];
 for(const name of files)assert.ok(fs.existsSync(name), 'Missing launch file: '+name);
 
 assert.ok(homepage.includes('rel="canonical"'), 'Missing canonical metadata');
+assert.ok(homepage.includes('public-language.js'), 'Public language script not loaded');
+assert.ok(i18n.includes('he') && i18n.includes('en') && i18n.includes('ar'), 'Public multilingual switching incomplete');
+assert.ok(source.includes('assets/favicon.png'), 'Header logo visibility fallback missing');
+assert.ok(source.includes("redirectTo:location.origin+location.pathname}"), 'Password recovery should not include a fragment that conflicts with callback tokens');
 assert.ok(homepage.includes('property="og:title"'), 'Missing social sharing metadata');
 assert.ok(homepage.includes('application/ld+json'), 'Missing structured data');
 assert.ok(read('sitemap.xml').includes('https://ozaapex.github.io/TAFRIVO/'), 'Wrong sitemap URL');
@@ -25,7 +30,7 @@ assert.ok(read('pitch.html').includes('pitch-join-qr')&&read('pitch.js').include
 for(const file of ['emails/confirm-signup.html','emails/reset-password.html']) { assert.ok(read(file).includes('{{ .ConfirmationURL }}'), 'Missing confirmation variable: '+file); assert.ok(read(file).includes('TAFRIVO'), 'Missing brand: '+file); }
 assert.ok(read('SMTP-SETUP-AR.md').includes('smtp-relay.brevo.com'), 'SMTP setup guide missing');
 
-async function render({hash='',open=false,admin=false,menu=false}={}){
+async function render({hash='',open=false,admin=false,menu=false,signedIn=false}={}){
   const root={innerHTML:'',addEventListener(){}};
   const restaurant={id:'9ca7fb58-d71b-4f6e-9f36-5b66206cc4bb',slug:'tafrivo-demo',name:'مطعم اختبار',description:'تجربة',public_phone:'0521234567',logo_url:null,cover_url:null};
   const tables={site_settings:{registration_open:open},account_profiles:{role:admin?'super_admin':'owner'},restaurants:menu?restaurant:[],restaurant_applications:[],restaurant_subscriptions:[],billing_plans:[],billing_payments:[],contact_messages:[],menu_categories:[{id:'cat-1',name_ar:'الوجبات',is_visible:true}],menu_items:[{id:'item-1',category_id:'cat-1',name_ar:'برغر',price_ils:48,is_visible:true,is_available:true}]};
@@ -38,7 +43,8 @@ async function render({hash='',open=false,admin=false,menu=false}={}){
     };
     return q;
   };
-  const sb={from:query,auth:{getUser:async()=>({data:{user:admin?{id:'087a6e7f-100c-486d-ad0e-10880eb29695'}:null},error:null}),onAuthStateChange(){}}};
+  const mockUser=(admin||signedIn)?{id:'087a6e7f-100c-486d-ad0e-10880eb29695',email:'test@example.com'}:null;
+  const sb={from:query,auth:{getUser:async()=>({data:{user:mockUser},error:null}),getSession:async()=>({data:{session:mockUser?{user:mockUser}:null}}),onAuthStateChange(){}}};
   const context={
     window:{supabase:{createClient:()=>sb},TAFRIVO_CONFIG:{SUPABASE_URL:'mock',SUPABASE_PUBLISHABLE_KEY:'mock'},addEventListener(){}},
     document:{getElementById:()=>root,addEventListener(){}},
@@ -55,6 +61,8 @@ assert.ok(closed.includes('href="join.html"'),'Closed onboarding must show funct
 assert.ok(closed.includes('جرّب المنيو بنفسك'),'Demo preview missing from homepage');
 assert.ok(!closed.includes('href="#signup"'),'Closed onboarding must not invite signups');
 
+const signedIn=await render({signedIn:true});
+assert.ok(signedIn.includes('حسابي')&&signedIn.includes('test@example.com')&&!signedIn.includes('href="#login"'),'Signed-in home must show account without fake logout');
 const opened=await render({open:true});
 assert.ok(opened.includes('href="#signup"'),'Open registration should invite signups');
 const signup=await render({hash:'#signup',open:true});
@@ -62,6 +70,8 @@ assert.ok(signup.includes('name="email"')&&signup.includes('privacy_ok'),'Signup
 
 const closedSignup=await render({hash:'#signup'});
 assert.ok(closedSignup.includes('التسجيل التجريبي'),'Direct signup must be blocked during SMTP setup');
+const invalidRecovery=await render({hash:'#reset-password'});
+assert.ok(invalidRecovery.includes('رابط استعادة كلمة المرور غير صالح'),'Unverified recovery URL must not reveal password reset form');
 const login=await render({hash:'#login'});
 assert.ok(login.includes('#forgot-password'),'Missing password recovery link');
 
@@ -73,4 +83,4 @@ assert.ok(dashboard.includes('lead-search')&&dashboard.includes('leads-export'),
 
 const menu=await render({hash:'#menu/tafrivo-demo',menu:true});
 assert.ok(menu.includes('برغر')&&menu.includes('48'),'Public menu rendering broken');
-console.log('TAFRIVO smoke checks: 8 scenarios + leads onboarding + static files + payment-secret guard PASSED');
+console.log('TAFRIVO smoke checks: account sessions, recovery URL, public languages, onboarding, static files, security PASSED');
