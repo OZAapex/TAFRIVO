@@ -8,14 +8,15 @@
     return;
   }
   const sb = window.supabase.createClient(window.TAFRIVO_CONFIG.SUPABASE_URL, window.TAFRIVO_CONFIG.SUPABASE_PUBLISHABLE_KEY);
-  const state = { user:null, role:'owner', restaurant:null, restaurants:[], applications:[], categories:[], items:[], tab:'items', lang:'ar', cart:{}, notice:null, itemEdit:null, menu:null, billingSubscriptions:[], billingPlans:[], billingPayments:[], contactMessages:[], registrationOpen:false, catEdit:null, restaurantLeads:[], leadsPage:0, leadsCount:0, leadsPageSize:60, newLeadsCount:0, leadsFilter:'all', leadsSearch:'' };
+  const state = { user:null, recoveryReady:false, role:'owner', restaurant:null, restaurants:[], applications:[], categories:[], items:[], tab:'items', lang:(()=>{try{const v=localStorage.getItem('tafrivo-lang');return ['ar','he','en'].includes(v)?v:'ar';}catch{return 'ar';}})(), cart:{}, notice:null, itemEdit:null, menu:null, billingSubscriptions:[], billingPlans:[], billingPayments:[], contactMessages:[], registrationOpen:false, catEdit:null, restaurantLeads:[], leadsPage:0, leadsCount:0, leadsPageSize:60, newLeadsCount:0, leadsFilter:'all', leadsSearch:'' };
   const e = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const url = v => /^https:\/\//i.test(v || '') ? e(v) : '';
   const money = v => `${Number(v || 0).toLocaleString('he-IL',{minimumFractionDigits:0,maximumFractionDigits:2})} ₪`;
   const cls = s => ['approved','pending','rejected','suspended'].includes(s)?s:'pending';
   const status = s => ({pending:'قيد المراجعة',approved:'موافق عليه',rejected:'مرفوض',suspended:'موقوف'})[s] || s;
-  const brand = () => `<a class="logo" href="#"><img src="assets/logo.webp" alt="TAFRIVO"><span>TAFRIVO</span></a>`;
-  const nav = (right='') => `<header class="topbar"><div class="topin wrap">${brand()}<div class="navlinks"><a href="#">الرئيسية</a><a href="#features">المميزات</a><a href="#app">لوحة التحكم</a><a href="join.html">سجّل مطعمك</a><a href="contact.html">تواصل معنا</a></div><div class="actions">${right}</div></div></header>`;
+  const brand = () => `<a class="logo" href="#"><img src="assets/favicon.png" alt="TAFRIVO logo" width="48" height="48"><span>TAFRIVO</span></a>`;
+  const languageSwitch=()=>`<div class="site-language-switch" role="group" aria-label="Language">${['ar','he','en'].map(l=>`<button type="button" data-act="ui-lang" data-id="${l}" aria-pressed="${state.lang===l}" class="${state.lang===l?'active':''}">${l.toUpperCase()}</button>`).join('')}</div>`;
+  const nav = (right='') => `<header class="topbar"><div class="topin wrap">${brand()}<div class="navlinks"><a href="#">الرئيسية</a><a href="#" data-act="show-features">المميزات</a><a href="#app">لوحة التحكم</a><a href="join.html">سجّل مطعمك</a><a href="contact.html">تواصل معنا</a></div><div class="actions">${languageSwitch()}${right}</div></div></header>`;
   const footer = () => `<footer class="footer"><div class="wrap"><span>© TAFRIVO · Digital Menus, Beautifully Simple</span><span><a href="privacy.html">الخصوصية</a> · <a href="terms.html">الشروط</a> · <a href="join.html">انضم للمطاعم</a> · <a href="contact.html">تواصل معنا</a></span></div></footer>`;
   const errBox = () => state.notice ? `<div class="banner ${state.notice.type || ''}" role="status">${e(state.notice.text)}</div>`:'';
   function flash(text,type='') {state.notice={text,type}; const el=document.getElementById('message'); if(el){el.innerHTML=errBox();el.scrollIntoView({block:'nearest',behavior:'smooth'});} }
@@ -34,6 +35,7 @@
     document.title='TAFRIVO | الانضمام التجريبي';
     root.innerHTML=`${nav('<a class="btn outline" href="#">الرئيسية</a>')}<main class="wrap section" style="max-width:660px"><section class="panel empty-panel"><div class="pending-icon">✉️</div><h2>التسجيل التجريبي بالموافقة</h2><p class="muted">عم نستقبل طلبات المطاعم عبر التواصل حاليًا حتى تكتمل إعدادات البريد وتأكيد الحساب.</p><a href="join.html" class="btn gold">سجّل مطعمك الآن</a> <a href="#login" class="btn outline">عندي حساب</a></section></main>${footer()}`;
   }
+  function invalidRecoveryPage(){root.innerHTML=`${nav()}<main class="wrap section"><section class="panel empty-panel" style="max-width:560px;margin:auto"><h2>رابط استعادة كلمة المرور غير صالح أو منتهي</h2><p class="muted">اطلب رابطًا جديدًا وافتح آخر رسالة فقط.</p><a class="btn gold" href="#forgot-password">إرسال رابط جديد</a></section></main>${footer()}`;}
   function recoveryPage(kind){
     const reset=kind==='reset-password';
     document.title='TAFRIVO | '+(reset?'تغيير كلمة المرور':'استعادة كلمة المرور');
@@ -46,8 +48,9 @@
   async function route(){
     const hash=decodeURIComponent(location.hash.replace(/^#/,''));
     if(hash.startsWith('menu/')){loading(); await openMenu(hash.slice(5));return;}
+    if(hash.startsWith('error=')||(hash==='reset-password'&&!state.recoveryReady)){clearNotice();invalidRecoveryPage();return;}
     if(hash==='forgot-password'||hash==='reset-password'){clearNotice();recoveryPage(hash);return;}
-    if(hash==='login'||hash==='signup'){clearNotice();if(hash==='signup'&&!state.registrationOpen)closedSignupPage();else authPage(hash);return;}
+    if(hash==='login'||hash==='signup'){clearNotice();if(hash==='login'&&state.user){go('#app');return;}if(hash==='signup'&&!state.registrationOpen)closedSignupPage();else authPage(hash);return;}
     if(hash.startsWith('manage/')){
       loading();
       try{
@@ -229,8 +232,8 @@ function renderAdminLeads(){
       state.leadsPage=0;clearNotice();await loadAdmin();return;
     }
     if(type==='login'){need(await sb.auth.signInWithPassword({email:g('email'),password:g('password')}));clearNotice();go('#app');return;}
-    if(type==='forgot-password'){need(await sb.auth.resetPasswordForEmail(g('email'),{redirectTo:location.origin+location.pathname+'#reset-password'}));flash('إذا البريد مسجّل، رح يصلك رابط الاستعادة على الإيميل.');return;}
-    if(type==='reset-password'){if(g('password').length<12)throw Error('كلمة المرور الجديدة لازم تكون 12 حرفًا أو أكثر.');need(await sb.auth.updateUser({password:g('password')}));await sb.auth.signOut();alert('تم تغيير كلمة المرور. سجّل دخولك بكلمة المرور الجديدة.');go('#login');return;}
+    if(type==='forgot-password'){need(await sb.auth.resetPasswordForEmail(g('email'),{redirectTo:location.origin+location.pathname}));flash('إذا البريد مسجّل، رح يصلك رابط الاستعادة على الإيميل.');return;}
+    if(type==='reset-password'){if(!state.recoveryReady)throw Error('افتح رابط الاستعادة الجديد من إيميلك أولًا.');if(g('password').length<12)throw Error('كلمة المرور الجديدة لازم تكون 12 حرفًا أو أكثر.');need(await sb.auth.updateUser({password:g('password')}));state.recoveryReady=false;await sb.auth.signOut();alert('تم تغيير كلمة المرور. سجّل دخولك بكلمة المرور الجديدة.');go('#login');return;}
     if(type==='signup'){
       if(!state.registrationOpen)throw Error('التسجيل التجريبي عن طريق نموذج التواصل حاليًا.');
       if(g('password').length<12)throw Error('اختار كلمة مرور من 12 حرفًا على الأقل.');
@@ -264,6 +267,8 @@ function renderAdminLeads(){
     }
   }catch(err){flash(errText(err),'error');}finally{if(button)button.disabled=false;}}
   async function handleClick(el){const act=el.dataset.act,id=el.dataset.id;
+    if(act==='ui-lang'){if(!['ar','he','en'].includes(id))return;state.lang=id;try{localStorage.setItem('tafrivo-lang',id)}catch{}document.documentElement.lang=id;document.documentElement.dir=id==='en'?'ltr':'rtl';clearNotice();route();return;}
+    if(act==='show-features'){if(location.hash!==''&&location.hash!=='#')go('#');setTimeout(()=>document.getElementById('features')?.scrollIntoView({behavior:'smooth'}),90);return;}
     if(act==='signout'){await sb.auth.signOut();state.user=null;state.restaurant=null;state.menu=null;state.cart={};go('#');return;}
     if(act==='reload'){clearNotice();route();return;}
     if(act==='toggle-registration'){const target=!state.registrationOpen;if(target&&!confirm('هل ضبطت SMTP واختبرت إرسال الإيميلات وتسجيل مطعم مستقل؟'))return;try{need(await sb.from('site_settings').update({registration_open:target}).eq('id',1).select('id').single());state.registrationOpen=target;await loadAdmin();}catch(err){flash(errText(err),'error');}return;}
@@ -376,6 +381,11 @@ function renderAdminLeads(){
   root.addEventListener('submit',ev=>{const form=ev.target.closest('form[data-form]');if(form){ev.preventDefault();submitForm(form);}});
   document.addEventListener('click',ev=>{const el=ev.target.closest('[data-act]');if(!el)return;ev.preventDefault();handleClick(el);});
   window.addEventListener('hashchange',()=>{clearNotice();route();});
-  sb.auth.onAuthStateChange((event)=>{if(event==='PASSWORD_RECOVERY')go('#reset-password');if(event==='SIGNED_OUT' && location.hash==='#app')go('#login');});
-  (async()=>{loading();await refreshPublicSettings();route();})();
+  sb.auth.onAuthStateChange((event,session)=>{
+    if(['INITIAL_SESSION','SIGNED_IN','SIGNED_OUT','PASSWORD_RECOVERY','TOKEN_REFRESHED'].includes(event))state.user=session?.user||null;
+    if(event==='PASSWORD_RECOVERY'){state.recoveryReady=true;setTimeout(()=>go('#reset-password'),0);return;}
+    if(event==='SIGNED_OUT'){state.recoveryReady=false;setTimeout(()=>{if(location.hash==='#app')go('#login');else if(!location.hash||location.hash==='#')route();},0);return;}
+    if(event==='SIGNED_IN'||event==='INITIAL_SESSION')setTimeout(()=>{if(!location.hash||location.hash==='#')route();},0);
+  });
+  (async()=>{loading();document.documentElement.lang=state.lang;document.documentElement.dir=state.lang==='en'?'ltr':'rtl';await refreshPublicSettings();const {data}=await sb.auth.getSession();state.user=data?.session?.user||state.user;route();})();
 })();
