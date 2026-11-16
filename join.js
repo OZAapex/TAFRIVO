@@ -13,8 +13,12 @@
   const phone=get('contact_phone').replace(/[^0-9]/g,'');
   if(phone.length<9||phone.length>15){show('راجع رقم الهاتف: لازم يكون بين 9 و15 رقمًا.',true);return;}
   if(Date.now()-submittedAt<60000){show('قدّمت طلبًا قبل قليل. حاول بعد دقيقة.',true);return;}
+  const email=get('contact_email').toLowerCase();
+  if(email.length>254 || !/^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i.test(email)){
+    show('البريد الإلكتروني إجباري. أدخل عنوان إيميل صحيح لتسجيل المطعم.',true);return;
+  }
   const data={restaurant_name:get('restaurant_name'),city:get('city'),contact_name:get('contact_name'),
-    contact_phone:get('contact_phone'),contact_email:get('contact_email').toLowerCase()||null,
+    contact_phone:get('contact_phone'),contact_email:email,
     menu_url:get('menu_url')||null,notes:get('notes')||null,consent:true};
   if(data.restaurant_name.length<2||data.city.length<2||data.contact_name.length<2){show('عبّي جميع الحقول المطلوبة.',true);return;}
   button.disabled=true;button.textContent='جاري إرسال الطلب…';
