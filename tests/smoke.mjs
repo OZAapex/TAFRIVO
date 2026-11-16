@@ -26,6 +26,12 @@ assert.ok(source.includes('uploadRestaurantImage'), 'Image uploader missing');
 assert.ok(read('contact.js').includes('contact_messages'), 'Contact form backend missing');
 assert.ok(read('join.js').includes('restaurant_leads'), 'Restaurant onboarding form missing');
 assert.ok(read('join.html').includes('id="join-form"'), 'Restaurant signup page missing');
+const joinPage=read('join.html');
+const joinLogic=read('join.js');
+assert.ok(joinPage.includes('name="contact_email" type="email" required'), 'Restaurant application must require email in HTML');
+assert.ok(joinLogic.includes("const email=get('contact_email').toLowerCase();") && joinLogic.includes('contact_email:email'), 'Onboarding must validate and send a required email');
+assert.ok(!joinPage.includes('البريد الإلكتروني (اختياري)'), 'Email cannot be marked optional');
+assert.ok(read('public-language.js').includes('["البريد الإلكتروني *","אימייל *","Email *"]'), 'Trilingual email-required label missing');
 assert.ok(read('pitch.html').includes('pitch-join-qr')&&read('pitch.js').includes('QRCode.toCanvas'), 'Printed outreach QR page is missing');
 for(const file of ['emails/confirm-signup.html','emails/reset-password.html']) { assert.ok(read(file).includes('{{ .ConfirmationURL }}'), 'Missing confirmation variable: '+file); assert.ok(read(file).includes('TAFRIVO'), 'Missing brand: '+file); }
 assert.ok(read('SMTP-SETUP-AR.md').includes('smtp-relay.brevo.com'), 'SMTP setup guide missing');
