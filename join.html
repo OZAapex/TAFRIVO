@@ -26,14 +26,14 @@
 </section>
 <section class="panel join-panel">
   <div class="flexbetween"><h2>طلب انضمام مطعم</h2><span class="tag approved">استقبال الطلبات مفتوح</span></div>
-  <p class="muted small">التقديم ما بده إيميل تأكيد أو إنشاء حساب. هذا طلب تسجيل للمراجعة والتواصل، مش تفعيل تلقائي للمنيو. لا نطلب دفعًا الآن.</p>
+  <p class="muted small">البريد الإلكتروني إلزامي لتقديم الطلب، لكن مش لازم تنشئ حساب أو تأكّد الإيميل بهالمرحلة. الطلب للمراجعة والتواصل، ومش تفعيل تلقائي للمنيو. لا نطلب دفعًا الآن.</p>
   <div id="join-feedback" class="banner hide" role="status" aria-live="polite"></div>
   <form id="join-form" class="contact-grid" autocomplete="on">
     <div class="field contact-field"><label for="restaurant_name">اسم المطعم أو المقهى *</label><input id="restaurant_name" name="restaurant_name" required minlength="2" maxlength="160" placeholder="مثال: مطعم الزيتون"></div>
     <div class="field contact-field"><label for="city">البلد أو المدينة *</label><input id="city" name="city" required minlength="2" maxlength="100" placeholder="مثال: عرابة"></div>
     <div class="field contact-field"><label for="contact_name">اسم صاحب المطعم / المسؤول *</label><input id="contact_name" name="contact_name" required minlength="2" maxlength="120" autocomplete="name" placeholder="الاسم الكامل"></div>
     <div class="field contact-field"><label for="contact_phone">رقم هاتف أو واتساب *</label><input id="contact_phone" name="contact_phone" type="tel" required minlength="9" maxlength="24" autocomplete="tel" inputmode="tel" placeholder="05xxxxxxxx"></div>
-    <div class="field contact-field"><label for="contact_email">البريد الإلكتروني (اختياري)</label><input id="contact_email" name="contact_email" type="email" maxlength="254" autocomplete="email" placeholder="name@example.com"></div>
+    <div class="field contact-field"><label for="contact_email">البريد الإلكتروني *</label><input id="contact_email" name="contact_email" type="email" required maxlength="254" autocomplete="email" placeholder="name@example.com"></div>
     <div class="field contact-field"><label for="menu_url">رابط المنيو الحالي أو إنستغرام (اختياري)</label><input id="menu_url" name="menu_url" type="url" maxlength="400" placeholder="https://..."></div>
     <div class="field contact-field span2"><label for="notes">ملاحظات (اختياري)</label><textarea id="notes" name="notes" rows="3" maxlength="900" placeholder="مثلًا: عندنا منيو PDF، أو نحتاج عربي وعبري"></textarea></div>
     <div class="honeypot" aria-hidden="true"><label>Website <input name="website" tabindex="-1" autocomplete="off"></label></div>
@@ -42,12 +42,12 @@
   </form>
   <div class="join-after"><h3>شو بصير بعد تقديم الطلب؟</h3><p>بنراجع البيانات، بنتواصل مع المسؤول، وبعد الموافقة بنساعدكم بتجهيز المنيو والـQR. الاشتراكات المدفوعة غير مفعّلة حاليًا.</p></div>
 </section>
-<section class="legal-lang" dir="rtl" lang="he"><h2>הרשמת מסעדות — TAFRIVO</h2><p>אפשר להגיש בקשת הצטרפות ללא יצירת חשבון: שם המסעדה, יישוב וטלפון. הבקשה נשלחת לבדיקת צוות השירות. אין חיוב או תשלום בשלב זה.</p></section>
-<section class="legal-lang" dir="ltr" lang="en"><h2>Restaurant onboarding</h2><p>Submit your restaurant's details without creating an account. Our team reviews requests and follows up. No payment is taken at this stage.</p></section>
+<section class="legal-lang" dir="rtl" lang="he"><h2>הרשמת מסעדות — TAFRIVO</h2><p>אפשר להגיש בקשת הצטרפות ללא יצירת חשבון, אבל חובה לציין כתובת אימייל, שם המסעדה, יישוב וטלפון. הבקשה נשלחת לבדיקת צוות השירות. אין חיוב או תשלום בשלב זה.</p></section>
+<section class="legal-lang" dir="ltr" lang="en"><h2>Restaurant onboarding</h2><p>Submit your restaurant's details with a required email address, without creating an account. Our team reviews requests and follows up. No payment is taken at this stage.</p></section>
 </main>
 <footer class="footer"><div class="wrap"><span>© TAFRIVO</span><span><a href="privacy.html">الخصوصية</a> · <a href="terms.html">الشروط</a> · <a href="contact.html">تواصل معنا</a></span></div></footer>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0" defer></script>
 <script src="config.js" defer></script>
-<script src="join.js?v=20261112" defer></script>
+<script src="join.js?v=20261116c" defer></script>
 <script src="public-language.js?v=20261115b" defer></script>
 </body></html>
