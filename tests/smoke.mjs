@@ -24,6 +24,10 @@ assert.ok(source.includes('data-act="toggle-registration"'), 'Admin registration
 assert.ok(source.includes('category-save'), 'Category editor missing');
 assert.ok(source.includes('uploadRestaurantImage'), 'Image uploader missing');
 assert.ok(read('contact.js').includes('contact_messages'), 'Contact form backend missing');
+assert.ok(source.includes('function menuOffersCard(') && source.includes("sb.rpc('subscribe_whatsapp_offers'"), 'WhatsApp opt-in form / backend missing');
+assert.ok(source.includes("state.tab==='marketing'?ownerMarketing()") && source.includes('verify_whatsapp_subscriber'), 'Owner WhatsApp marketing dashboard missing');
+assert.ok(source.includes("sb.rpc('unsubscribe_whatsapp_offers'") && source.includes('stop-offers/'), 'WhatsApp unsubscribe link must be available');
+assert.ok(read('privacy.html').includes('اشتراكات عروض واتساب الاختيارية'), 'Privacy policy must disclose WhatsApp subscriptions');
 assert.ok(read('join.js').includes('restaurant_leads'), 'Restaurant onboarding form missing');
 assert.ok(read('join.html').includes('id="join-form"'), 'Restaurant signup page missing');
 const joinPage=read('join.html');
@@ -96,4 +100,6 @@ assert.ok(dashboard.includes('lead-search')&&dashboard.includes('leads-export'),
 
 const menu=await render({hash:'#menu/tafrivo-demo',menu:true});
 assert.ok(menu.includes('برغر')&&menu.includes('48'),'Public menu rendering broken');
+assert.ok(menu.includes('data-form="whatsapp-optin"') && menu.includes('marketing_consent') && menu.includes('customer_whatsapp_phone'), 'Published menu must offer explicit WhatsApp opt-in');
+assert.ok(!menu.includes('data-act="whatsapp-send-offer"'), 'Public menu must never reveal marketing sender controls');
 console.log('TAFRIVO smoke checks: account sessions, recovery URL, public languages, onboarding, static files, security PASSED');
