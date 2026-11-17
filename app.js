@@ -8,7 +8,7 @@
     return;
   }
   const sb = window.supabase.createClient(window.TAFRIVO_CONFIG.SUPABASE_URL, window.TAFRIVO_CONFIG.SUPABASE_PUBLISHABLE_KEY);
-  const state = { user:null, recoveryReady:false, role:'owner', restaurant:null, restaurants:[], applications:[], categories:[], items:[], tab:'items', lang:(()=>{try{const v=localStorage.getItem('tafrivo-lang');return ['ar','he','en'].includes(v)?v:'ar';}catch{return 'ar';}})(), cart:{}, notice:null, itemEdit:null, menu:null, billingSubscriptions:[], billingPlans:[], billingPayments:[], contactMessages:[], registrationOpen:false, catEdit:null, marketingSubscribers:[], restaurantLeads:[], leadsPage:0, leadsCount:0, leadsPageSize:60, newLeadsCount:0, leadsFilter:'all', leadsSearch:'' };
+  const state = { user:null, recoveryReady:false, role:'owner', restaurant:null, restaurants:[], applications:[], categories:[], items:[], tab:'items', lang:(()=>{try{const v=localStorage.getItem('tafrivo-lang');return ['ar','he','en'].includes(v)?v:'ar';}catch{return 'ar';}})(), cart:{}, notice:null, itemEdit:null, menu:null, billingSubscriptions:[], billingPlans:[], billingPayments:[], contactMessages:[], registrationOpen:false, catEdit:null, marketingSubscribers:[], marketingCampaigns:[], restaurantLeads:[], leadsPage:0, leadsCount:0, leadsPageSize:60, newLeadsCount:0, leadsFilter:'all', leadsSearch:'' };
   const e = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const url = v => /^https:\/\//i.test(v || '') ? e(v) : '';
   const money = v => `${Number(v || 0).toLocaleString('he-IL',{minimumFractionDigits:0,maximumFractionDigits:2})} ₪`;
@@ -203,18 +203,62 @@ function renderAdminLeads(){
   function tabs(){return `<div class="page-tabs">${[['items','الأكلات والأسعار'],['categories','أقسام المنيو'],['settings','إعدادات المطعم'],['qr','الرابط و QR'],['marketing','عروض واتساب']].map(([id,label])=>`<button data-act="tab" data-id="${id}" class="${state.tab===id?'active':''}">${label}</button>`).join('')}</div>`;}
 
   async function loadMarketingSubscribers(){
-    state.marketingSubscribers=need(await sb.from('whatsapp_marketing_subscribers')
-      .select('id,phone_e164,status,consented_at,verified_at,unsubscribe_token')
-      .eq('restaurant_id',state.restaurant.id).order('created_at',{ascending:false}).limit(250))||[];
+    const [people,campaigns]=await Promise.all([
+      sb.from('whatsapp_marketing_subscribers')
+        .select('id,phone_e164,status,consented_at,verified_at,unsubscribe_token')
+        .eq('restaurant_id',state.restaurant.id).order('created_at',{ascending:false}).limit(250),
+      sb.from('whatsapp_broadcast_campaigns')
+        .select('id,template_key,template_language,offer_details,audience_eligible_at_creation,status,created_at')
+        .eq('restaurant_id',state.restaurant.id).order('created_at',{ascending:false}).limit(20)
+    ]);
+    state.marketingSubscribers=need(people)||[];
+    state.marketingCampaigns=need(campaigns)||[];
+  }
+  const campaignNames={special_offer:'عرض خاص',new_dish:'صنف جديد',weekend_offer:'عرض نهاية الأسبوع'};
+  function campaignPreview(kind,details,lang){
+    const name=state.restaurant?.name||'مطعمنا',text=String(details||'').trim();
+    if(lang==='he')return kind==='new_dish'
+      ? `חדש ב-${name}! 🍔 ${text}. פתחו את התפריט שלנו לפרטים. להסרה: קישור ביטול ההרשמה.`
+      : `מבצע מ-${name}! 🎉 ${text}. לפרטים פתחו את התפריט. להסרה: קישור ביטול ההרשמה.`;
+    if(lang==='en')return kind==='new_dish'
+      ? `New at ${name}! 🍔 ${text}. See our digital menu for details. To opt out, use the unsubscribe link.`
+      : `An offer from ${name}! 🎉 ${text}. See our menu for details. To opt out, use the unsubscribe link.`;
+    return kind==='new_dish'
+      ? `جديد من ${name}! 🍔 ${text}. افتح المنيو وشوف التفاصيل. لإلغاء العروض استخدم رابط إلغاء الاشتراك.`
+      : `عرض من ${name}! 🎉 ${text}. افتح المنيو وشوف التفاصيل. لإلغاء العروض استخدم رابط إلغاء الاشتراك.`;
   }
   function ownerMarketing(){
-    const subs=state.marketingSubscribers||[],active=subs.filter(x=>x.status==='active'),pending=subs.filter(x=>x.status==='pending');
+    const subs=state.marketingSubscribers||[],active=subs.filter(x=>x.status==='active'&&x.verified_at),pending=subs.filter(x=>x.status==='pending'),campaigns=state.marketingCampaigns||[];
     return `<section class="panel">
       <h2>💚 نادي الزبائن — عروض واتساب</h2>
       <p class="muted">الزبون يختار الاشتراك من المنيو، ثم يرسل رسالة تأكيد من رقمه على واتساب المطعم. فعّل الاشتراك فقط بعد مراجعة رقم المُرسل والتأكد أنه نفس الرقم المسجّل.</p>
       <div class="stats"><div class="stat"><strong>${active.length}</strong><span>مشترك مؤكد</span></div><div class="stat"><strong>${pending.length}</strong><span>بانتظار تأكيد واتساب</span></div></div>
       <div class="banner warn" style="margin:18px 0">الإرسال التلقائي والجماعي مش مفعّل. بعد التأكيد، زر «فتح واتساب» بجهّز رسالة لرقم واحد، وإنت بتضغط إرسال داخل واتساب. ما ترسل إلا للي وافقوا، وأوقف أي رقم بطلب الإلغاء.</div>
-      <div class="field"><label for="marketing-draft">نص العرض</label><textarea id="marketing-draft" maxlength="800" rows="4" placeholder="مثلاً: عرض الخميس! خصم 10% على طلبك القادم."></textarea></div>
+      <section class="panel" style="margin:20px 0;border-color:var(--border)">
+        <h3>📣 حملة لكل المشتركين</h3>
+        <p class="small muted">حضّر رسالة واحدة، وبالمستقبل بيصير زر «إرسال للجميع» يرسل لكل المشتركين المؤكدين بواسطة WhatsApp Business Platform بعد ربط الرقم واعتماد قالب MARKETING من Meta. الإرسال الجماعي غير فعّال حاليًا.</p>
+        <form data-form="campaign-draft">
+          <div class="formgrid">
+            <div class="field"><label>نوع القالب الإعلاني</label><select name="campaign_template" required>
+              <option value="special_offer">🎁 عرض خاص</option><option value="new_dish">🍔 صنف جديد</option><option value="weekend_offer">🎉 عرض نهاية الأسبوع</option>
+            </select></div>
+            <div class="field"><label>لغة القالب</label><select name="campaign_language" required>
+              <option value="ar">العربية</option><option value="he">עברית</option><option value="en">English</option>
+            </select></div>
+            <div class="field span2"><label>تفاصيل العرض</label><textarea name="campaign_details" rows="3" required minlength="4" maxlength="180" placeholder="مثال: خصم 15% على وجبات مختارة حتى الخميس"></textarea></div>
+          </div>
+          <div class="actions" style="flex-wrap:wrap">
+            <button class="btn outline" type="button" data-act="preview-whatsapp-campaign">معاينة الحملة</button>
+            <button class="btn soft" type="submit">حفظ مسودة للجميع</button>
+            <button class="btn gold" type="button" disabled title="يتطلب ربط WhatsApp Business Platform وقالب MARKETING معتمد">إرسال للجميع — بعد ربط Meta</button>
+          </div>
+        </form>
+        <div id="campaign-preview" class="banner" style="margin-top:14px;white-space:pre-wrap">اختار قالبًا واكتب تفاصيل العرض ثم اضغط «معاينة الحملة».</div>
+        <p class="small muted">عدد المؤكدين الظاهرين: ${active.length} من آخر 250 سجل. وقت الإرسال الفعلي رح نفحص الموافقين الموجودين وقتها ونستبعد أي شخص ألغى اشتراكه. ما في أي إرسال أو خصم مالي بمجرد حفظ المسودة.</p>
+        <h4 style="margin-top:20px">مسودات الحملات الأخيرة</h4>
+        ${campaigns.length?'<div class="listcards">'+campaigns.map(c=>`<div class="listcard"><div><b>${e(campaignNames[c.template_key]||c.template_key)}</b><div class="small muted">${e(c.offer_details)} · ${e(c.template_language.toUpperCase())} · ${e(new Date(c.created_at).toLocaleDateString('ar'))}</div><div class="small muted">مستلمون مؤكدون وقت التحضير: ${Number(c.audience_eligible_at_creation)} · مسودة غير مرسلة</div></div><span class="tag pending">مسودة</span></div>`).join('')+'</div>':'<div class="empty">ما في حملات محفوظة حتى الآن.</div>'}
+      </section>
+      <div class="field"><label for="marketing-draft">رسالة يدوية لزبون واحد</label><textarea id="marketing-draft" maxlength="800" rows="4" placeholder="مثلاً: عرض الخميس! خصم 10% على طلبك القادم."></textarea></div>
       <h3 style="margin-top:22px">المشتركون (آخر 250)</h3>
       ${subs.length?'<div class="listcards">'+subs.filter(x=>x.status!=='unsubscribed').map(x=>`<div class="listcard"><div><b dir="ltr">${e('+'+x.phone_e164)}</b><div class="small muted">${x.status==='active'?'✅ مؤكد':'⏳ ينتظر التأكيد'} · ${e(new Date(x.consented_at).toLocaleDateString('ar'))}</div></div><div class="actions">${x.status==='pending'?'<button type="button" class="btn soft small" data-act="verify-wa-subscriber" data-id="'+e(x.id)+'">تأكيد بعد مراجعة واتساب</button>':''}${x.status==='active'?'<button type="button" class="btn gold small" data-act="whatsapp-send-offer" data-id="'+e(x.id)+'">فتح واتساب</button>':''}<button type="button" class="btn outline small" data-act="optout-wa-subscriber" data-id="${e(x.id)}">إلغاء الاشتراك</button></div></div>`).join('')+'</div>':'<div class="empty">ما في مشتركين حتى الآن.</div>'}
       <p class="small muted">للتأكيد اليدوي: افتح محادثات واتساب المطعم وشوف رسالة الموافقة اللي أرسلها الزبون بنفس رقم الهاتف. ما في أي رسائل بتنرسل أوتوماتيكيًا.</p>
@@ -278,6 +322,20 @@ function renderAdminLeads(){
       state.leadsPage=0;clearNotice();await loadAdmin();return;
     }
 
+     if(type==='campaign-draft'){
+       const r=state.restaurant;
+       if(!r||r.status!=='approved'||state.tab!=='marketing')throw Error('افتح قسم عروض واتساب للمطعم أولًا.');
+       const template=g('campaign_template'),lang=g('campaign_language'),details=g('campaign_details');
+       if(!Object.hasOwn(campaignNames,template)||!['ar','he','en'].includes(lang)||details.length<4||details.length>180){
+         throw Error('اختار قالبًا صحيحًا واكتب تفاصيل بين 4 و180 حرفًا.');
+       }
+       if(!confirm('حفظ مسودة عرض لكل المشتركين المؤكدين؟ لن يتم إرسال أي رسالة الآن.'))return;
+       need(await sb.rpc('prepare_whatsapp_broadcast',{
+         p_restaurant_id:r.id,p_template_key:template,p_offer_details:details,p_template_language:lang
+       }));
+       await loadMarketingSubscribers();renderOwner();flash('تم حفظ الحملة كمسودة، بدون إرسال. زر الإرسال الجماعي يحتاج ربط Meta وقالبًا معتمدًا.');
+       return;
+     }
      if(type==='whatsapp-optin'){
        const r=state.menu?.restaurant,phone=safePhone(g('customer_whatsapp_phone'));
        if(!r)throw Error('افتح منيو المطعم أولًا.');
@@ -335,6 +393,19 @@ function renderAdminLeads(){
     if(act==='show-features'){if(location.hash!==''&&location.hash!=='#')go('#');setTimeout(()=>document.getElementById('features')?.scrollIntoView({behavior:'smooth'}),90);return;}
     if(act==='signout'){await sb.auth.signOut();state.user=null;state.restaurant=null;state.menu=null;state.cart={};go('#');return;}
 
+    if(act==='preview-whatsapp-campaign'){
+      if(state.tab!=='marketing'||!state.restaurant)return;
+      const form=document.querySelector('form[data-form="campaign-draft"]');
+      if(!form)return;
+      const F=new FormData(form),kind=String(F.get('campaign_template')||''),lang=String(F.get('campaign_language')||''),details=String(F.get('campaign_details')||'').trim();
+      const preview=document.getElementById('campaign-preview');
+      if(!preview)return;
+      if(!Object.hasOwn(campaignNames,kind)||!['ar','he','en'].includes(lang)||details.length<4){
+        preview.textContent='اختار قالبًا واكتب تفاصيل العرض أولًا.';return;
+      }
+      preview.textContent='معاينة تقريبية (القالب الرسمي لم يُعتمد من Meta بعد):\n\n'+campaignPreview(kind,details,lang);
+      return;
+    }
     if(act==='stop-whatsapp-offers'){
       if(!/^[0-9a-f-]{36}$/i.test(id))return;
       try{
