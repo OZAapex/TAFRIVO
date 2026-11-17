@@ -8,7 +8,7 @@
     return;
   }
   const sb = window.supabase.createClient(window.TAFRIVO_CONFIG.SUPABASE_URL, window.TAFRIVO_CONFIG.SUPABASE_PUBLISHABLE_KEY);
-  const state = { user:null, recoveryReady:false, role:'owner', restaurant:null, restaurants:[], applications:[], categories:[], items:[], tab:'items', lang:(()=>{try{const v=localStorage.getItem('tafrivo-lang');return ['ar','he','en'].includes(v)?v:'ar';}catch{return 'ar';}})(), cart:{}, notice:null, itemEdit:null, menu:null, billingSubscriptions:[], billingPlans:[], billingPayments:[], contactMessages:[], registrationOpen:false, catEdit:null, restaurantLeads:[], leadsPage:0, leadsCount:0, leadsPageSize:60, newLeadsCount:0, leadsFilter:'all', leadsSearch:'' };
+  const state = { user:null, recoveryReady:false, role:'owner', restaurant:null, restaurants:[], applications:[], categories:[], items:[], tab:'items', lang:(()=>{try{const v=localStorage.getItem('tafrivo-lang');return ['ar','he','en'].includes(v)?v:'ar';}catch{return 'ar';}})(), cart:{}, notice:null, itemEdit:null, menu:null, billingSubscriptions:[], billingPlans:[], billingPayments:[], contactMessages:[], registrationOpen:false, catEdit:null, marketingSubscribers:[], restaurantLeads:[], leadsPage:0, leadsCount:0, leadsPageSize:60, newLeadsCount:0, leadsFilter:'all', leadsSearch:'' };
   const e = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const url = v => /^https:\/\//i.test(v || '') ? e(v) : '';
   const money = v => `${Number(v || 0).toLocaleString('he-IL',{minimumFractionDigits:0,maximumFractionDigits:2})} ₪`;
@@ -47,6 +47,13 @@
   async function authUser(){const {data,error}=await sb.auth.getUser();if(error && !/Auth session missing/i.test(error.message))console.warn('getUser',error.message);return data?.user||null;}
   async function route(){
     const hash=decodeURIComponent(location.hash.replace(/^#/,''));
+
+    if(hash.startsWith('stop-offers/')){
+      const token=hash.slice('stop-offers/'.length);
+      const valid=/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(token);
+      root.innerHTML=`${nav()}<main class="wrap section" style="max-width:660px"><section class="panel"><h2>إلغاء عروض واتساب</h2><p>إذا ما عدت ترغب برسائل عروض المطعم، اضغط الزر لإيقاف اشتراك هذا الرقم.</p><div id="message"></div><button type="button" class="btn gold" data-act="stop-whatsapp-offers" data-id="${e(valid?token:'')}">${valid?'تأكيد إلغاء الاشتراك':'الرابط غير صالح'}</button></section></main>${footer()}`;
+      return;
+    }
     if(hash.startsWith('menu/')){loading(); await openMenu(hash.slice(5));return;}
     if(hash.startsWith('error=')||(hash==='reset-password'&&!state.recoveryReady)){clearNotice();invalidRecoveryPage();return;}
     if(hash==='forgot-password'||hash==='reset-password'){clearNotice();recoveryPage(hash);return;}
@@ -176,7 +183,7 @@ function renderAdminLeads(){
       sb.from('menu_categories').select('*').eq('restaurant_id',id).order('sort_order',{ascending:true}),
       sb.from('menu_items').select('*').eq('restaurant_id',id).order('sort_order',{ascending:true})
     ]);
-    state.categories=need(c)||[];state.items=need(i)||[];renderOwner();
+    state.categories=need(c)||[];state.items=need(i)||[];if(state.tab==='marketing')await loadMarketingSubscribers();renderOwner();
   }
   async function loadOwner(){if(state.role==='super_admin' && state.restaurant?.id){await loadAdminRestaurant();return;}state.restaurants=need(await sb.from('restaurants').select('*').eq('owner_id',userId()).order('created_at',{ascending:false}))||[];
     if(!state.restaurants.length){renderOnboarding();return;}
@@ -184,7 +191,7 @@ function renderAdminLeads(){
     state.restaurant=current || state.restaurants.find(x=>x.status==='approved') || state.restaurants[0];
     if(state.restaurant.status!=='approved'){renderPending();return;}
     const [c,i]=await Promise.all([sb.from('menu_categories').select('*').eq('restaurant_id',state.restaurant.id).order('sort_order',{ascending:true}),sb.from('menu_items').select('*').eq('restaurant_id',state.restaurant.id).order('sort_order',{ascending:true})]);
-    state.categories=need(c)||[];state.items=need(i)||[];renderOwner();
+    state.categories=need(c)||[];state.items=need(i)||[];if(state.tab==='marketing')await loadMarketingSubscribers();renderOwner();
   }
   function ownerRestaurantPicker(){
     if(state.role==='super_admin'||state.restaurants.length<2)return '';
@@ -193,7 +200,41 @@ function renderAdminLeads(){
   }
   function renderOnboarding(){root.innerHTML=`${shell('تسجيل مطعمك','قدّم الطلب، وإدارة TAFRIVO بتراجعه قبل التفعيل')}<main class="wrap dash"><div id="message">${errBox()}</div><div class="two"><section class="panel"><h2>بيانات المطعم</h2><form data-form="restaurant-register"><div class="field"><label>اسم المطعم *</label><input name="name" required maxlength="160" placeholder="مثل: مطعم الزيتون"></div><div class="formgrid"><div class="field"><label>رابط المنيو (بالإنجليزية) *</label><input name="slug" pattern="[a-z0-9]+(-[a-z0-9]+)*" minlength="3" maxlength="60" required placeholder="al-zaytoon"></div><div class="field"><label>المدينة</label><input name="city" placeholder="عرابة"></div><div class="field"><label>اسم المسؤول *</label><input name="contact_name" required minlength="2" maxlength="100" placeholder="الاسم الكامل"></div><div class="field"><label>رقم هاتف المسؤول *</label><input name="contact_phone" required type="tel" minlength="9" maxlength="20" placeholder="05xxxxxxxx"></div><div class="field span2"><label>رقم واتساب للطلبات (اختياري)</label><input name="public_phone" type="tel" placeholder="9725xxxxxxxx"></div></div><button class="btn gold block">إرسال طلب التسجيل</button></form></section><aside class="panel"><div class="pending-icon">🛡️</div><h3>الاشتراك بموافقة المدير</h3><p class="muted">بعد تقديم طلبك، بتشوف حالته هون. ما بتقدر تعدّل المنيو أو تنشره قبل موافقة الإدارة.</p><hr style="border:0;border-top:1px solid var(--border);margin:20px 0"><h3>خصوصية الحساب</h3><p class="small muted">معلومات حسابك ومطعمك محمية بصلاحيات منفصلة، ولا يمكن للمطاعم الثانية تعديل قائمة طعامك.</p></aside></div></main>${footer()}`;}
   function renderPending(){const r=state.restaurant;root.innerHTML=`${shell('حساب مطعمك','حالة طلب التسجيل')}<main class="wrap dash"><div id="message">${errBox()}</div>${ownerRestaurantPicker()}<section class="panel empty-panel" style="max-width:650px;margin:auto"><div class="pending-icon">${r.status==='pending'?'⏳':r.status==='rejected'?'📝':'⛔'}</div><h2>${e(r.name)}</h2><span class="tag ${cls(r.status)}">${status(r.status)}</span><p style="margin-top:20px" class="muted">${r.status==='pending'?'طلبك وصل وبانتظار مراجعة الإدارة.':r.status==='rejected'?'تم رفض الطلب. تواصل مع إدارة TAFRIVO لمزيد من التفاصيل.':'الحساب موقوف مؤقتًا، تواصل مع إدارة المنصة.'}</p><button data-act="reload" class="btn outline">تحديث الحالة</button><div class="small muted display-url" style="margin-top:19px">User ID: ${e(userId())}</div></section></main>${footer()}`;}
-  function tabs(){return `<div class="page-tabs">${[['items','الأكلات والأسعار'],['categories','أقسام المنيو'],['settings','إعدادات المطعم'],['qr','الرابط و QR']].map(([id,label])=>`<button data-act="tab" data-id="${id}" class="${state.tab===id?'active':''}">${label}</button>`).join('')}</div>`;}
+  function tabs(){return `<div class="page-tabs">${[['items','الأكلات والأسعار'],['categories','أقسام المنيو'],['settings','إعدادات المطعم'],['qr','الرابط و QR'],['marketing','عروض واتساب']].map(([id,label])=>`<button data-act="tab" data-id="${id}" class="${state.tab===id?'active':''}">${label}</button>`).join('')}</div>`;}
+
+  async function loadMarketingSubscribers(){
+    state.marketingSubscribers=need(await sb.from('whatsapp_marketing_subscribers')
+      .select('id,phone_e164,status,consented_at,verified_at,unsubscribe_token')
+      .eq('restaurant_id',state.restaurant.id).order('created_at',{ascending:false}).limit(250))||[];
+  }
+  function ownerMarketing(){
+    const subs=state.marketingSubscribers||[],active=subs.filter(x=>x.status==='active'),pending=subs.filter(x=>x.status==='pending');
+    return `<section class="panel">
+      <h2>💚 نادي الزبائن — عروض واتساب</h2>
+      <p class="muted">الزبون يختار الاشتراك من المنيو، ثم يرسل رسالة تأكيد من رقمه على واتساب المطعم. فعّل الاشتراك فقط بعد مراجعة رقم المُرسل والتأكد أنه نفس الرقم المسجّل.</p>
+      <div class="stats"><div class="stat"><strong>${active.length}</strong><span>مشترك مؤكد</span></div><div class="stat"><strong>${pending.length}</strong><span>بانتظار تأكيد واتساب</span></div></div>
+      <div class="banner warn" style="margin:18px 0">الإرسال التلقائي والجماعي مش مفعّل. بعد التأكيد، زر «فتح واتساب» بجهّز رسالة لرقم واحد، وإنت بتضغط إرسال داخل واتساب. ما ترسل إلا للي وافقوا، وأوقف أي رقم بطلب الإلغاء.</div>
+      <div class="field"><label for="marketing-draft">نص العرض</label><textarea id="marketing-draft" maxlength="800" rows="4" placeholder="مثلاً: عرض الخميس! خصم 10% على طلبك القادم."></textarea></div>
+      <h3 style="margin-top:22px">المشتركون (آخر 250)</h3>
+      ${subs.length?'<div class="listcards">'+subs.filter(x=>x.status!=='unsubscribed').map(x=>`<div class="listcard"><div><b dir="ltr">${e('+'+x.phone_e164)}</b><div class="small muted">${x.status==='active'?'✅ مؤكد':'⏳ ينتظر التأكيد'} · ${e(new Date(x.consented_at).toLocaleDateString('ar'))}</div></div><div class="actions">${x.status==='pending'?'<button type="button" class="btn soft small" data-act="verify-wa-subscriber" data-id="'+e(x.id)+'">تأكيد بعد مراجعة واتساب</button>':''}${x.status==='active'?'<button type="button" class="btn gold small" data-act="whatsapp-send-offer" data-id="'+e(x.id)+'">فتح واتساب</button>':''}<button type="button" class="btn outline small" data-act="optout-wa-subscriber" data-id="${e(x.id)}">إلغاء الاشتراك</button></div></div>`).join('')+'</div>':'<div class="empty">ما في مشتركين حتى الآن.</div>'}
+      <p class="small muted">للتأكيد اليدوي: افتح محادثات واتساب المطعم وشوف رسالة الموافقة اللي أرسلها الزبون بنفس رقم الهاتف. ما في أي رسائل بتنرسل أوتوماتيكيًا.</p>
+    </section>`;
+  }
+  function menuOffersCard(r){
+    const wa=safePhone(r.public_phone);
+    if(wa.length<10 || wa.length>15)return '';
+    return `<section class="panel" style="margin:26px auto 18px;max-width:690px;padding:22px">
+      <h2>🎁 ${textLang('عروض المطعم على واتساب','מבצעים מהמסעדה בוואטסאפ','Restaurant offers on WhatsApp')}</h2>
+      <p class="small muted">${textLang('الاشتراك اختياري، والمنيو بيضل مفتوح بدون تسجيل.','ההרשמה היא לבחירתכם. התפריט זמין גם בלעדיה.','Subscribing is optional; browse the menu without signing up.')}</p>
+      <div id="message"></div>
+      <form data-form="whatsapp-optin">
+        <div class="field"><label>${textLang('رقم واتساب الخاص فيك','מספר הוואטסאפ שלך','Your WhatsApp number')}</label><input name="customer_whatsapp_phone" type="tel" required maxlength="24" inputmode="tel" autocomplete="tel" placeholder="0501234567 / +972501234567" dir="ltr"></div>
+        <label class="small consent" style="display:flex;align-items:start;gap:9px"><input name="marketing_consent" type="checkbox" required style="margin-top:5px"><span>${textLang('أوافق على تلقي عروض وإعلانات من هذا المطعم عبر واتساب. أستطيع إلغاء الاشتراك متى أشاء.','אני מסכים/ה לקבל הצעות ופרסומות מהמסעדה בוואטסאפ. אפשר להסיר את ההרשמה בכל עת.','I agree to receive WhatsApp promotions from this restaurant. I can unsubscribe anytime.')}</span></label>
+        <p class="small muted"><a href="privacy.html" target="_blank" rel="noopener">${textLang('سياسة الخصوصية','מדיניות פרטיות','Privacy policy')}</a></p>
+        <button type="submit" class="btn gold block">${textLang('اشتراك — ثم تأكيد على واتساب','הרשמה ואישור בוואטסאפ','Join and confirm on WhatsApp')}</button>
+      </form>
+    </section>`;
+  }
   function ownerItems(){const r=state.restaurant,its=state.items,cat=state.categories;const editing=its.find(x=>x.id===state.itemEdit);
     return `<div class="two"><section class="panel"><h2>${editing?'تعديل أكلة':'أضف أكلة جديدة'}</h2><form data-form="item-save"><div class="formgrid"><div class="field"><label>الاسم بالعربي *</label><input name="name_ar" value="${e(editing?.name_ar||'')}" required></div><div class="field"><label>الاسم بالعبري</label><input name="name_he" value="${e(editing?.name_he||'')}"></div><div class="field"><label>الاسم بالإنجليزي</label><input name="name_en" value="${e(editing?.name_en||'')}"></div><div class="field"><label>القسم *</label><select name="category_id" required><option value="">اختار القسم</option>${cat.map(c=>`<option value="${e(c.id)}" ${editing?.category_id===c.id?'selected':''}>${e(c.name_ar||c.name_he||c.name_en)}</option>`).join('')}</select></div><div class="field"><label>السعر (₪) *</label><input name="price_ils" type="number" min="0" step="0.01" required value="${e(editing?.price_ils??'')}"></div><div class="field"><label>صورة الأكلة ${editing?'(اختياري للتغيير)':''}</label><input class="upload" type="file" name="image_file" accept="image/jpeg,image/png,image/webp"></div><div class="field span2"><label>وصف بالعربي</label><textarea name="description_ar">${e(editing?.description_ar||'')}</textarea></div><div class="field span2"><label>وصف بالعبري</label><textarea name="description_he">${e(editing?.description_he||'')}</textarea></div><div class="field span2"><label>وصف بالإنجليزي</label><textarea name="description_en">${e(editing?.description_en||'')}</textarea></div><div class="field"><label><input name="is_available" type="checkbox" ${!editing||editing.is_available?'checked':''}> متوفرة</label></div><div class="field"><label><input name="is_visible" type="checkbox" ${!editing||editing.is_visible?'checked':''}> ظاهرة بالمنيو</label></div></div><button class="btn gold" ${cat.length?'':'disabled'}>${editing?'حفظ التغييرات':'إضافة الأكلة'}</button>${editing?` <button type="button" class="btn outline" data-act="cancel-edit">إلغاء</button>`:''}</form>${!cat.length?'<div class="banner warn">أضف قسم من تبويب الأقسام أولًا.</div>':''}</section><section class="panel"><h2>الأكلات (${its.length})</h2>${its.length?`<div class="listcards">${its.map(it=>`<div class="listcard"><div style="display:flex;gap:12px;align-items:center">${url(it.image_url)?`<img src="${url(it.image_url)}" alt="" style="width:65px;height:65px;border-radius:11px;object-fit:cover">`:''}<div><h3>${e(it.name_ar||it.name_he||it.name_en)}</h3><p>${money(it.price_ils)} · ${it.is_available?'متوفرة':'نفدت'} · ${it.is_visible?'ظاهرة':'مخفية'}</p></div></div><div class="actions"><button class="btn outline small" data-act="edit-item" data-id="${e(it.id)}">تعديل</button><button class="btn danger small" data-act="delete-item" data-id="${e(it.id)}">حذف</button></div></div>`).join('')}</div>`:'<div class="empty">لسه ما أضفت أكلات.</div>'}</section></div>`;}
   function ownerCategories(){const edit=state.categories.find(x=>x.id===state.catEdit);
@@ -202,7 +243,7 @@ function renderAdminLeads(){
   }
   function ownerSettings(){const r=state.restaurant;return `<section class="panel" style="max-width:760px"><h2>إعدادات المطعم</h2><form data-form="restaurant-settings"><div class="field"><label>اسم المطعم</label><input name="name" maxlength="160" value="${e(r.name)}" required></div><div class="field"><label>المدينة</label><input name="city" maxlength="120" value="${e(r.city||'')}"></div><div class="field"><label>وصف المطعم</label><textarea name="description" maxlength="1000">${e(r.description||'')}</textarea></div><div class="field"><label>رقم واتساب للطلبات</label><input name="public_phone" type="tel" maxlength="24" placeholder="05xxxxxxxx" value="${e(r.public_phone||'')}"></div><div class="formgrid"><div class="field"><label>شعار المطعم (JPG / PNG / WEBP)</label>${url(r.logo_url)?`<img class="settings-photo settings-logo" src="${url(r.logo_url)}" alt="شعار المطعم الحالي">`:''}<input type="file" name="logo_file" accept="image/jpeg,image/png,image/webp"></div><div class="field"><label>صورة غلاف المنيو (JPG / PNG / WEBP)</label>${url(r.cover_url)?`<img class="settings-photo settings-cover" src="${url(r.cover_url)}" alt="الغلاف الحالي">`:''}<input type="file" name="cover_file" accept="image/jpeg,image/png,image/webp"></div></div><p class="small muted">حجم كل صورة 5MB كحد أقصى. يُفضّل صور واضحة وأصلية للمطعم.</p><div class="field"><label><input type="checkbox" name="is_published" ${r.is_published?'checked':''}> نشر المنيو للزبائن</label></div><button class="btn gold">حفظ إعدادات المطعم</button></form></section>`;}
     function ownerQR(){const r=state.restaurant,link=`${location.origin}${location.pathname}#menu/${encodeURIComponent(r.slug)}`;return `<section class="panel"><h2>رابط المنيو ورمز QR</h2><p class="muted">هذا الرابط ثابت. أي تغيير على المنيو بيظهر على نفس الرابط.</p><div class="qrbox"><div><div id="qr-target"></div></div><div style="flex:1;min-width:220px"><div class="banner ${r.is_published?'':'warn'}">${r.is_published?'المنيو منشور للزبائن':'المنيو غير منشور. فعّله من الإعدادات حتى يفتح للزبائن.'}</div><p class="display-url">${e(link)}</p><div class="actions"><button class="btn soft" data-act="copy" data-value="${e(link)}">نسخ الرابط</button>${r.is_published?`<a class="btn outline" href="#menu/${encodeURIComponent(r.slug)}" target="_blank" rel="noopener">فتح المنيو</a>`:'<span class="small muted">انشر المنيو أولًا عشان يفتح للزبائن</span>'}<button class="btn outline" data-act="download-qr">تنزيل QR</button></div></div></div></section>`;}
-  function renderOwner(){const r=state.restaurant;root.innerHTML=`${shell(state.role==='super_admin'?'إدارة منيو المطعم':'لوحة مطعمك',`أهلًا في ${e(r.name)} · حسابك مُفعّل`,r.is_published?'<span class="tag approved">المنيو منشور</span>':'<span class="tag pending">المنيو غير منشور</span>')}${state.role==='super_admin'?`<div class="wrap" style="padding-top:18px"><div class="actions"><a class="btn outline small" href="#app">← العودة للوحة المدير</a><button class="btn soft small" data-act="transfer-owner">تسليم إدارة المطعم لصاحبه</button></div><p class="small muted" style="margin-top:9px">هذه الخطوة تحتاج حسابًا مؤكدًا بإيميل صاحب المطعم. لا تُشارك كلمة مرور حساب المدير معه.</p></div>`:''}<main class="wrap dash"><div id="message">${errBox()}</div>${ownerRestaurantPicker()}<div class="stats"><div class="stat"><strong>${state.categories.length}</strong><span>الأقسام</span></div><div class="stat"><strong>${state.items.length}</strong><span>الأكلات</span></div><div class="stat"><strong>${state.items.filter(x=>x.is_available).length}</strong><span>الأكلات المتوفرة</span></div><div class="stat"><strong>${r.is_published?'✓':'—'}</strong><span>حالة النشر</span></div></div>${tabs()}${state.tab==='categories'?ownerCategories():state.tab==='settings'?ownerSettings():state.tab==='qr'?ownerQR():ownerItems()}</main>${footer()}`;
+  function renderOwner(){const r=state.restaurant;root.innerHTML=`${shell(state.role==='super_admin'?'إدارة منيو المطعم':'لوحة مطعمك',`أهلًا في ${e(r.name)} · حسابك مُفعّل`,r.is_published?'<span class="tag approved">المنيو منشور</span>':'<span class="tag pending">المنيو غير منشور</span>')}${state.role==='super_admin'?`<div class="wrap" style="padding-top:18px"><div class="actions"><a class="btn outline small" href="#app">← العودة للوحة المدير</a><button class="btn soft small" data-act="transfer-owner">تسليم إدارة المطعم لصاحبه</button></div><p class="small muted" style="margin-top:9px">هذه الخطوة تحتاج حسابًا مؤكدًا بإيميل صاحب المطعم. لا تُشارك كلمة مرور حساب المدير معه.</p></div>`:''}<main class="wrap dash"><div id="message">${errBox()}</div>${ownerRestaurantPicker()}<div class="stats"><div class="stat"><strong>${state.categories.length}</strong><span>الأقسام</span></div><div class="stat"><strong>${state.items.length}</strong><span>الأكلات</span></div><div class="stat"><strong>${state.items.filter(x=>x.is_available).length}</strong><span>الأكلات المتوفرة</span></div><div class="stat"><strong>${r.is_published?'✓':'—'}</strong><span>حالة النشر</span></div></div>${tabs()}${state.tab==='categories'?ownerCategories():state.tab==='settings'?ownerSettings():state.tab==='qr'?ownerQR():state.tab==='marketing'?ownerMarketing():ownerItems()}</main>${footer()}`;
     if(state.tab==='qr')drawQR();
   }
   function drawQR(){const target=document.getElementById('qr-target');if(!target)return;const r=state.restaurant,link=`${location.origin}${location.pathname}#menu/${encodeURIComponent(r.slug)}`;if(window.QRCode?.toCanvas){const canvas=document.createElement('canvas');target.append(canvas);window.QRCode.toCanvas(canvas,link,{width:218,margin:2,color:{dark:'#103c2c',light:'#ffffff'}}).catch(()=>{target.textContent='تعذر رسم QR';});}else target.innerHTML='<div class="banner warn">مكتبة QR غير متاحة. انسخ الرابط لحين تشغيلها.</div>';}
@@ -213,7 +254,7 @@ function renderAdminLeads(){
   }
   function menuUnavailable(){root.innerHTML=`${nav()}<section class="wrap section"><div class="panel empty-panel"><h2>المنيو غير متاح حاليًا</h2><p class="muted">قد يكون المطعم بانتظار الموافقة أو لم ينشر المنيو بعد.</p><a class="btn" href="#">الصفحة الرئيسية</a></div></section>${footer()}`;}
   function renderMenu(){const d=state.menu;if(!d)return;const r=d.restaurant,lang=state.lang;document.title=`${r.name} | TAFRIVO`;
-    root.innerHTML=`<div class="menu-page" dir="${lang==='en'?'ltr':'rtl'}"><div class="menu-hero">${url(r.cover_url)?`<img class="restaurant-menu-cover" src="${url(r.cover_url)}" alt="">`:''}<div class="wrap"><div class="menu-nav">${brand()}<div class="lang-switch">${['ar','he','en'].map(x=>`<button data-act="lang" data-id="${x}" class="${lang===x?'active':''}">${x.toUpperCase()}</button>`).join('')}</div></div>${url(r.logo_url)?`<img class="restaurant-menu-logo" src="${url(r.logo_url)}" alt="شعار ${e(r.name)}">`:''}<h1>${e(r.name)}</h1><p>${e(r.description||textLang('تصفح القائمة واختر ما تحب','בחרו מנות מהתפריט','Browse the menu and choose your favorites'))}</p></div></div><div class="menu-sticky"><div class="wrap">${d.cats.map(c=>`<a href="#cat-${e(c.id)}" data-act="scrollcat" data-id="${e(c.id)}">${e(foodLang(c,'name'))}</a>`).join('')}</div></div><main class="menu-main">${d.cats.map(c=>{const its=d.items.filter(i=>i.category_id===c.id);return `<section id="cat-${e(c.id)}"><h2 class="menu-cat">${e(foodLang(c,'name'))}</h2>${its.length?its.map(it=>`<article class="itemcard"><div class="item-right">${url(it.image_url)?`<img src="${url(it.image_url)}" alt="">`:''}<div><h3>${e(foodLang(it,'name'))}</h3><p>${e(foodLang(it,'description'))}</p><div class="item-price">${money(it.price_ils)}</div></div></div><div><button class="btn ${it.is_available?'gold':'outline'} small" ${it.is_available?'':'disabled'} data-act="cartadd" data-id="${e(it.id)}">${it.is_available?textLang('إضافة','הוסף','Add'):textLang('نفدت','אזל','Sold out')}</button></div></article>`).join(''):`<p class="muted">${textLang('لا توجد أصناف بهذا القسم','אין מנות בקטגוריה','No items in this category')}</p>`}</section>`}).join('')}${!d.cats.length?`<div class="empty">${textLang('المنيو لسه ما فيه أكلات','התפריט עדיין ריק','Menu is empty for now')}</div>`:''}<div style="text-align:center;margin-top:40px;color:var(--muted);font-size:11px">Powered by TAFRIVO</div></main>${cartView()}</div>`;
+    root.innerHTML=`<div class="menu-page" dir="${lang==='en'?'ltr':'rtl'}"><div class="menu-hero">${url(r.cover_url)?`<img class="restaurant-menu-cover" src="${url(r.cover_url)}" alt="">`:''}<div class="wrap"><div class="menu-nav">${brand()}<div class="lang-switch">${['ar','he','en'].map(x=>`<button data-act="lang" data-id="${x}" class="${lang===x?'active':''}">${x.toUpperCase()}</button>`).join('')}</div></div>${url(r.logo_url)?`<img class="restaurant-menu-logo" src="${url(r.logo_url)}" alt="شعار ${e(r.name)}">`:''}<h1>${e(r.name)}</h1><p>${e(r.description||textLang('تصفح القائمة واختر ما تحب','בחרו מנות מהתפריט','Browse the menu and choose your favorites'))}</p></div></div><div class="menu-sticky"><div class="wrap">${d.cats.map(c=>`<a href="#cat-${e(c.id)}" data-act="scrollcat" data-id="${e(c.id)}">${e(foodLang(c,'name'))}</a>`).join('')}</div></div><main class="menu-main">${d.cats.map(c=>{const its=d.items.filter(i=>i.category_id===c.id);return `<section id="cat-${e(c.id)}"><h2 class="menu-cat">${e(foodLang(c,'name'))}</h2>${its.length?its.map(it=>`<article class="itemcard"><div class="item-right">${url(it.image_url)?`<img src="${url(it.image_url)}" alt="">`:''}<div><h3>${e(foodLang(it,'name'))}</h3><p>${e(foodLang(it,'description'))}</p><div class="item-price">${money(it.price_ils)}</div></div></div><div><button class="btn ${it.is_available?'gold':'outline'} small" ${it.is_available?'':'disabled'} data-act="cartadd" data-id="${e(it.id)}">${it.is_available?textLang('إضافة','הוסף','Add'):textLang('نفدت','אזל','Sold out')}</button></div></article>`).join(''):`<p class="muted">${textLang('لا توجد أصناف بهذا القسم','אין מנות בקטגוריה','No items in this category')}</p>`}</section>`}).join('')}${!d.cats.length?`<div class="empty">${textLang('المنيو لسه ما فيه أكلات','התפריט עדיין ריק','Menu is empty for now')}</div>`:''}${menuOffersCard(r)}<div style="text-align:center;margin-top:40px;color:var(--muted);font-size:11px">Powered by TAFRIVO</div></main>${cartView()}</div>`;
   }
   function cartView(){if(!state.menu)return '';const items=state.menu.items,orders=Object.entries(state.cart).filter(([_,qty])=>qty>0).map(([id,qty])=>({item:items.find(x=>x.id===id),qty})).filter(x=>x.item);if(!orders.length)return '';
     const total=orders.reduce((s,x)=>s+Number(x.item.price_ils)*x.qty,0);
@@ -236,6 +277,24 @@ function renderAdminLeads(){
       state.leadsSearch=g('lead_name').slice(0,100);
       state.leadsPage=0;clearNotice();await loadAdmin();return;
     }
+
+     if(type==='whatsapp-optin'){
+       const r=state.menu?.restaurant,phone=safePhone(g('customer_whatsapp_phone'));
+       if(!r)throw Error('افتح منيو المطعم أولًا.');
+       if(!F.has('marketing_consent'))throw Error('الموافقة الصريحة على استقبال العروض إلزامية.');
+       if(!/^[1-9][0-9]{8,14}$/.test(phone))throw Error('اكتب رقم واتساب صحيحًا مع رمز الدولة.');
+       need(await sb.rpc('subscribe_whatsapp_offers',{p_restaurant_id:r.id,p_phone:phone,p_consent:true,p_lang:state.lang}));
+       const restaurantWa=safePhone(r.public_phone);
+       const message=textLang(
+         'مرحبًا، أوافق على الاشتراك بعروض مطعم '+r.name+' عبر واتساب. رقمي هو +'+phone+'. أرجو تأكيد اشتراكي.',
+         'שלום, אני מסכים/ה לקבל מבצעים ממסעדת '+r.name+' בוואטסאפ. המספר שלי הוא +'+phone+'. נא לאשר את ההרשמה.',
+         'Hello, I opt in to WhatsApp offers from '+r.name+'. My number is +'+phone+'. Please confirm my subscription.'
+       );
+       const link='https://wa.me/'+restaurantWa+'?text='+encodeURIComponent(message);
+       const target=document.getElementById('message');
+       if(target)target.innerHTML='<div class="banner">✅ '+e(textLang('تم تسجيل الطلب. لتأكيده اضغط الزر وأرسل الرسالة من نفس رقمك على واتساب المطعم.','בקשת ההרשמה נקלטה. שלחו הודעת אישור ממספרכם בוואטסאפ של המסעדה.','Request saved. Confirm by sending a message from your own number to the restaurant on WhatsApp.'))+'</div><a class="btn gold" href="'+e(link)+'" target="_blank" rel="noopener noreferrer" style="margin:8px 0">'+e(textLang('فتح واتساب لتأكيد الاشتراك','פתיחת וואטסאפ לאישור','Open WhatsApp to confirm'))+'</a>';
+       form.reset();return;
+     }
     if(type==='login'){need(await sb.auth.signInWithPassword({email:g('email'),password:g('password')}));clearNotice();go('#app');return;}
     if(type==='forgot-password'){need(await sb.auth.resetPasswordForEmail(g('email'),{redirectTo:location.origin+location.pathname}));flash('إذا البريد مسجّل، رح يصلك رابط الاستعادة على الإيميل.');return;}
     if(type==='reset-password'){if(!state.recoveryReady)throw Error('افتح رابط الاستعادة الجديد من إيميلك أولًا.');if(g('password').length<12)throw Error('كلمة المرور الجديدة لازم تكون 12 حرفًا أو أكثر.');need(await sb.auth.updateUser({password:g('password')}));state.recoveryReady=false;await sb.auth.signOut();alert('تم تغيير كلمة المرور. سجّل دخولك بكلمة المرور الجديدة.');go('#login');return;}
@@ -275,6 +334,38 @@ function renderAdminLeads(){
     if(act==='ui-lang'){if(!['ar','he','en'].includes(id))return;state.lang=id;try{localStorage.setItem('tafrivo-lang',id)}catch{}document.documentElement.lang=id;document.documentElement.dir=id==='en'?'ltr':'rtl';clearNotice();route();return;}
     if(act==='show-features'){if(location.hash!==''&&location.hash!=='#')go('#');setTimeout(()=>document.getElementById('features')?.scrollIntoView({behavior:'smooth'}),90);return;}
     if(act==='signout'){await sb.auth.signOut();state.user=null;state.restaurant=null;state.menu=null;state.cart={};go('#');return;}
+
+    if(act==='stop-whatsapp-offers'){
+      if(!/^[0-9a-f-]{36}$/i.test(id))return;
+      try{
+        const removed=need(await sb.rpc('unsubscribe_whatsapp_offers',{p_token:id}));
+        root.innerHTML=`${nav()}<main class="wrap section"><section class="panel"><h2>${removed?'تم إلغاء الاشتراك ✅':'رابط الإلغاء غير صالح'}</h2><p>${removed?'لن تظهر رسائل جديدة لهذا الرقم ضمن قائمة المشتركين المؤكدين.':'تواصل مع المطعم لإيقاف العروض.'}</p><a class="btn outline" href="#">الرئيسية</a></section></main>${footer()}`;
+      }catch(err){flash(errText(err),'error');}
+      return;
+    }
+    if(['verify-wa-subscriber','optout-wa-subscriber','whatsapp-send-offer'].includes(act)){
+      const x=(state.marketingSubscribers||[]).find(t=>t.id===id);
+      if(!x||state.tab!=='marketing'||!state.restaurant)return;
+      if(act==='whatsapp-send-offer'){
+        if(x.status!=='active'||!x.verified_at)return;
+        const offer=String(document.getElementById('marketing-draft')?.value||'').trim();
+        if(offer.length<3||offer.length>800){flash('اكتب نص عرض من 3 إلى 800 حرف.','error');return;}
+        const stopLink=location.origin+location.pathname+'#stop-offers/'+x.unsubscribe_token;
+        const msg='إعلان من '+state.restaurant.name+'\n'+offer+'\n\nلإيقاف عروض واتساب: '+stopLink+'\nأو أرسل كلمة إلغاء إلى المطعم.';
+        window.open('https://wa.me/'+x.phone_e164+'?text='+encodeURIComponent(msg),'_blank','noopener,noreferrer');
+        return;
+      }
+      if(act==='verify-wa-subscriber' && x.status!=='pending')return;
+      if(act==='verify-wa-subscriber' && !confirm('هل استلمت رسالة اشتراك عبر واتساب من نفس الرقم +'+x.phone_e164+' وتأكدت من الموافقة؟'))return;
+      if(act==='optout-wa-subscriber' && !confirm('إيقاف إرسال عروض واتساب إلى +'+x.phone_e164+'؟'))return;
+      try{
+        const rpc=act==='verify-wa-subscriber'?'verify_whatsapp_subscriber':'owner_unsubscribe_whatsapp_subscriber';
+        need(await sb.rpc(rpc,{p_subscriber_id:id}));
+        await loadMarketingSubscribers();renderOwner();
+        flash(act==='verify-wa-subscriber'?'تم تأكيد اشتراك الرقم بعد التحقق.':'تم إيقاف الاشتراك.');
+      }catch(err){flash(errText(err),'error');}
+      return;
+    }
     if(act==='reload'){clearNotice();route();return;}
     if(act==='owner-switch-restaurant'){
       if(state.role==='super_admin')return;
@@ -348,7 +439,7 @@ function renderAdminLeads(){
     if(act==='contactjump'){document.getElementById('contact-inbox')?.scrollIntoView({behavior:'smooth',block:'start'});return;}
     if(act==='contact-handled'){try{need(await sb.from('contact_messages').update({status:'handled',handled_at:new Date().toISOString()}).eq('id',id).select('id').single());await loadAdmin();}catch(err){flash(errText(err),'error');}return;}
     if(['approve','reject','suspend'].includes(act)){await changeStatus(id,({approve:'approved',reject:'rejected',suspend:'suspended'})[act]);return;}
-    if(act==='tab'){state.tab=id;state.itemEdit=null;state.catEdit=null;clearNotice();renderOwner();return;}
+    if(act==='tab'){state.tab=id;state.itemEdit=null;state.catEdit=null;clearNotice();if(id==='marketing'){try{await loadMarketingSubscribers();}catch(err){flash(errText(err),'error');return;}}renderOwner();return;}
     if(act==='cancel-edit'){state.itemEdit=null;renderOwner();return;}
     if(act==='cancel-category'){state.catEdit=null;renderOwner();return;}
     if(act==='category-edit'){state.catEdit=id;renderOwner();return;}
