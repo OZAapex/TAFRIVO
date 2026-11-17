@@ -36,10 +36,14 @@ assert.ok(read('pitch.html').includes('pitch-join-qr')&&read('pitch.js').include
 for(const file of ['emails/confirm-signup.html','emails/reset-password.html']) { assert.ok(read(file).includes('{{ .ConfirmationURL }}'), 'Missing confirmation variable: '+file); assert.ok(read(file).includes('TAFRIVO'), 'Missing brand: '+file); }
 assert.ok(read('SMTP-SETUP-AR.md').includes('smtp-relay.brevo.com'), 'SMTP setup guide missing');
 
-async function render({hash='',open=false,admin=false,menu=false,signedIn=false}={}){
+async function render({hash='',open=false,admin=false,menu=false,signedIn=false,ownerMulti=false}={}){
   const root={innerHTML:'',addEventListener(){}};
   const restaurant={id:'9ca7fb58-d71b-4f6e-9f36-5b66206cc4bb',slug:'tafrivo-demo',name:'مطعم اختبار',description:'تجربة',public_phone:'0521234567',logo_url:null,cover_url:null};
-  const tables={site_settings:{registration_open:open},account_profiles:{role:admin?'super_admin':'owner'},restaurants:menu?restaurant:[],restaurant_applications:[],restaurant_subscriptions:[],billing_plans:[],billing_payments:[],contact_messages:[],menu_categories:[{id:'cat-1',name_ar:'الوجبات',is_visible:true}],menu_items:[{id:'item-1',category_id:'cat-1',name_ar:'برغر',price_ils:48,is_visible:true,is_available:true}]};
+  const ownerRestaurants=ownerMulti?[
+    {id:'fd8a16d4-9b31-408e-af22-2073a3c102a3',name:'1Test',slug:'test1',status:'rejected',is_published:false,created_at:'2026-11-17T05:47:31Z'},
+    {id:'4b474d4e-d709-4f53-a7c4-ad95feec63b9',name:'LAS VEGAS',slug:'las-vegas',status:'approved',is_published:true,created_at:'2026-11-16T13:54:16Z'}
+  ]:[];
+  const tables={site_settings:{registration_open:open},account_profiles:{role:admin?'super_admin':'owner'},restaurants:ownerMulti?ownerRestaurants:menu?restaurant:[],restaurant_applications:[],restaurant_subscriptions:[],billing_plans:[],billing_payments:[],contact_messages:[],menu_categories:[{id:'cat-1',name_ar:'الوجبات',is_visible:true}],menu_items:[{id:'item-1',category_id:'cat-1',name_ar:'برغر',price_ils:48,is_visible:true,is_available:true}]};
   const query=table=>{
     const q={
       select(){return q;},eq(){return q;},order(){return q;},gte(){return q;},lt(){return q;},limit(){return q;},range(){return q;},ilike(){return q;},
@@ -67,6 +71,9 @@ assert.ok(closed.includes('href="join.html"'),'Closed onboarding must show funct
 assert.ok(closed.includes('جرّب المنيو بنفسك'),'Demo preview missing from homepage');
 assert.ok(!closed.includes('href="#signup"'),'Closed onboarding must not invite signups');
 
+const ownerWithTransfer=await render({hash:'#app',signedIn:true,ownerMulti:true});
+assert.ok(ownerWithTransfer.includes('أهلًا في LAS VEGAS') && ownerWithTransfer.includes('لوحة مطعمك'), 'Approved transferred restaurant must be shown instead of newer rejected application');
+assert.ok(ownerWithTransfer.includes('data-act="owner-switch-restaurant"') && ownerWithTransfer.includes('1Test') && ownerWithTransfer.includes('مطاعمي'), 'Restaurant chooser must show multiple owned restaurants');
 const signedIn=await render({signedIn:true});
 assert.ok(signedIn.includes('حسابي')&&signedIn.includes('test@example.com')&&!signedIn.includes('href="#login"'),'Signed-in home must show account without fake logout');
 const opened=await render({open:true});
