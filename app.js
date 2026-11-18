@@ -8,7 +8,7 @@
     return;
   }
   const sb = window.supabase.createClient(window.TAFRIVO_CONFIG.SUPABASE_URL, window.TAFRIVO_CONFIG.SUPABASE_PUBLISHABLE_KEY);
-  const state = { user:null, recoveryReady:false, role:'owner', restaurant:null, restaurants:[], applications:[], categories:[], items:[], tab:'items', lang:(()=>{try{const v=localStorage.getItem('tafrivo-lang');return ['ar','he','en'].includes(v)?v:'ar';}catch{return 'ar';}})(), cart:{}, notice:null, itemEdit:null, menu:null, billingSubscriptions:[], billingPlans:[], billingPayments:[], contactMessages:[], registrationOpen:false, catEdit:null, marketingSubscribers:[], marketingCampaigns:[], restaurantLeads:[], leadsPage:0, leadsCount:0, leadsPageSize:60, newLeadsCount:0, leadsFilter:'all', leadsSearch:'' };
+  const state = { user:null, recoveryReady:false, role:'owner', restaurant:null, restaurants:[], applications:[], categories:[], items:[], tab:'items', lang:(()=>{try{const v=localStorage.getItem('tafrivo-lang');return ['ar','he','en'].includes(v)?v:'ar';}catch{return 'ar';}})(), cart:{}, breadChoiceItem:null, orderKind:'', orderTable:'', orderNote:'', notice:null, itemEdit:null, menu:null, billingSubscriptions:[], billingPlans:[], billingPayments:[], contactMessages:[], registrationOpen:false, catEdit:null, marketingSubscribers:[], marketingCampaigns:[], restaurantLeads:[], leadsPage:0, leadsCount:0, leadsPageSize:60, newLeadsCount:0, leadsFilter:'all', leadsSearch:'' };
   const e = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const url = v => /^https:\/\//i.test(v || '') ? e(v) : '';
   const money = v => `${Number(v || 0).toLocaleString('he-IL',{minimumFractionDigits:0,maximumFractionDigits:2})} ₪`;
@@ -280,7 +280,7 @@ function renderAdminLeads(){
     </section>`;
   }
   function ownerItems(){const r=state.restaurant,its=state.items,cat=state.categories;const editing=its.find(x=>x.id===state.itemEdit);
-    return `<div class="two"><section class="panel"><h2>${editing?'تعديل أكلة':'أضف أكلة جديدة'}</h2><form data-form="item-save"><div class="formgrid"><div class="field"><label>الاسم بالعربي *</label><input name="name_ar" value="${e(editing?.name_ar||'')}" required></div><div class="field"><label>الاسم بالعبري</label><input name="name_he" value="${e(editing?.name_he||'')}"></div><div class="field"><label>الاسم بالإنجليزي</label><input name="name_en" value="${e(editing?.name_en||'')}"></div><div class="field"><label>القسم *</label><select name="category_id" required><option value="">اختار القسم</option>${cat.map(c=>`<option value="${e(c.id)}" ${editing?.category_id===c.id?'selected':''}>${e(c.name_ar||c.name_he||c.name_en)}</option>`).join('')}</select></div><div class="field"><label>السعر (₪) *</label><input name="price_ils" type="number" min="0" step="0.01" required value="${e(editing?.price_ils??'')}"></div><div class="field"><label>صورة الأكلة ${editing?'(اختياري للتغيير)':''}</label><input class="upload" type="file" name="image_file" accept="image/jpeg,image/png,image/webp"></div><div class="field span2"><label>وصف بالعربي</label><textarea name="description_ar">${e(editing?.description_ar||'')}</textarea></div><div class="field span2"><label>وصف بالعبري</label><textarea name="description_he">${e(editing?.description_he||'')}</textarea></div><div class="field span2"><label>وصف بالإنجليزي</label><textarea name="description_en">${e(editing?.description_en||'')}</textarea></div><div class="field"><label><input name="is_available" type="checkbox" ${!editing||editing.is_available?'checked':''}> متوفرة</label></div><div class="field"><label><input name="is_visible" type="checkbox" ${!editing||editing.is_visible?'checked':''}> ظاهرة بالمنيو</label></div></div><button class="btn gold" ${cat.length?'':'disabled'}>${editing?'حفظ التغييرات':'إضافة الأكلة'}</button>${editing?` <button type="button" class="btn outline" data-act="cancel-edit">إلغاء</button>`:''}</form>${!cat.length?'<div class="banner warn">أضف قسم من تبويب الأقسام أولًا.</div>':''}</section><section class="panel"><h2>الأكلات (${its.length})</h2>${its.length?`<div class="listcards">${its.map(it=>`<div class="listcard"><div style="display:flex;gap:12px;align-items:center">${url(it.image_url)?`<img src="${url(it.image_url)}" alt="" style="width:65px;height:65px;border-radius:11px;object-fit:cover">`:''}<div><h3>${e(it.name_ar||it.name_he||it.name_en)}</h3><p>${money(it.price_ils)} · ${it.is_available?'متوفرة':'نفدت'} · ${it.is_visible?'ظاهرة':'مخفية'}</p></div></div><div class="actions"><button class="btn outline small" data-act="edit-item" data-id="${e(it.id)}">تعديل</button><button class="btn danger small" data-act="delete-item" data-id="${e(it.id)}">حذف</button></div></div>`).join('')}</div>`:'<div class="empty">لسه ما أضفت أكلات.</div>'}</section></div>`;}
+    return `<div class="two"><section class="panel"><h2>${editing?'تعديل أكلة':'أضف أكلة جديدة'}</h2><form data-form="item-save"><div class="formgrid"><div class="field"><label>الاسم بالعربي *</label><input name="name_ar" value="${e(editing?.name_ar||'')}" required></div><div class="field"><label>الاسم بالعبري</label><input name="name_he" value="${e(editing?.name_he||'')}"></div><div class="field"><label>الاسم بالإنجليزي</label><input name="name_en" value="${e(editing?.name_en||'')}"></div><div class="field"><label>القسم *</label><select name="category_id" required><option value="">اختار القسم</option>${cat.map(c=>`<option value="${e(c.id)}" ${editing?.category_id===c.id?'selected':''}>${e(c.name_ar||c.name_he||c.name_en)}</option>`).join('')}</select></div><div class="field"><label>السعر (₪) *</label><input name="price_ils" type="number" min="0" step="0.01" required value="${e(editing?.price_ils??'')}"></div><div class="field"><label>صورة الأكلة ${editing?'(اختياري للتغيير)':''}</label><input class="upload" type="file" name="image_file" accept="image/jpeg,image/png,image/webp"></div><div class="field span2"><label>وصف بالعربي</label><textarea name="description_ar">${e(editing?.description_ar||'')}</textarea></div><div class="field span2"><label>وصف بالعبري</label><textarea name="description_he">${e(editing?.description_he||'')}</textarea></div><div class="field span2"><label>وصف بالإنجليزي</label><textarea name="description_en">${e(editing?.description_en||'')}</textarea></div><div class="field"><label><input name="is_available" type="checkbox" ${!editing||editing.is_available?'checked':''}> متوفرة</label></div><div class="field"><label><input name="is_visible" type="checkbox" ${!editing||editing.is_visible?'checked':''}> ظاهرة بالمنيو</label></div><div class="field span2"><label><input name="bread_choices_enabled" type="checkbox" ${editing?.bread_choices_enabled?'checked':''}> الوجبة بتتوفر لفة أو بجيت (الزبون بختار قبل الطلب)</label></div></div><button class="btn gold" ${cat.length?'':'disabled'}>${editing?'حفظ التغييرات':'إضافة الأكلة'}</button>${editing?` <button type="button" class="btn outline" data-act="cancel-edit">إلغاء</button>`:''}</form>${!cat.length?'<div class="banner warn">أضف قسم من تبويب الأقسام أولًا.</div>':''}</section><section class="panel"><h2>الأكلات (${its.length})</h2>${its.length?`<div class="listcards">${its.map(it=>`<div class="listcard"><div style="display:flex;gap:12px;align-items:center">${url(it.image_url)?`<img src="${url(it.image_url)}" alt="" style="width:65px;height:65px;border-radius:11px;object-fit:cover">`:''}<div><h3>${e(it.name_ar||it.name_he||it.name_en)}</h3><p>${money(it.price_ils)} · ${it.is_available?'متوفرة':'نفدت'} · ${it.is_visible?'ظاهرة':'مخفية'}</p></div></div><div class="actions"><button class="btn outline small" data-act="edit-item" data-id="${e(it.id)}">تعديل</button><button class="btn danger small" data-act="delete-item" data-id="${e(it.id)}">حذف</button></div></div>`).join('')}</div>`:'<div class="empty">لسه ما أضفت أكلات.</div>'}</section></div>`;}
   function ownerCategories(){const edit=state.categories.find(x=>x.id===state.catEdit);
     const sorted=[...state.categories].sort((a,b)=>a.sort_order-b.sort_order);
     return `<div class="two"><section class="panel"><h2>${edit?'تعديل القسم':'إضافة قسم جديد'}</h2><form data-form="category-save"><div class="field"><label>اسم القسم بالعربي *</label><input name="name_ar" required maxlength="120" value="${e(edit?.name_ar||'')}" placeholder="مثل: مشاوي"></div><div class="field"><label>اسم القسم بالعبري</label><input name="name_he" maxlength="120" value="${e(edit?.name_he||'')}" placeholder="גריל"></div><div class="field"><label>اسم القسم بالإنجليزي</label><input name="name_en" maxlength="120" value="${e(edit?.name_en||'')}" placeholder="Grill"></div><div class="field"><label><input type="checkbox" name="is_visible" ${!edit||edit.is_visible?'checked':''}> القسم ظاهر للزبائن</label></div><button class="btn gold">${edit?'حفظ تعديل القسم':'إضافة القسم'}</button>${edit?'<button class="btn outline" type="button" data-act="cancel-category">إلغاء</button>':''}</form></section><section class="panel"><h2>الأقسام (${state.categories.length})</h2>${sorted.length?`<div class="listcards">${sorted.map((ct,i)=>`<div class="listcard"><div><h3>${e(ct.name_ar||ct.name_he||ct.name_en)}</h3><p>${e(ct.name_he||'')} ${ct.name_en?' · '+e(ct.name_en):''} · ${ct.is_visible?'ظاهر':'مخفي'} · ${state.items.filter(it=>it.category_id===ct.id).length} أكلات</p></div><div class="actions"><button type="button" data-act="category-up" data-id="${e(ct.id)}" class="btn outline small" ${i===0?'disabled':''} title="انقل للأعلى">↑</button><button type="button" data-act="category-down" data-id="${e(ct.id)}" class="btn outline small" ${i===sorted.length-1?'disabled':''} title="انقل للأسفل">↓</button><button type="button" data-act="category-edit" data-id="${e(ct.id)}" class="btn outline small">تعديل</button><button type="button" data-act="category-delete" data-id="${e(ct.id)}" class="btn danger small">حذف</button></div></div>`).join('')}</div>`:'<div class="empty">لا توجد أقسام بعد.</div>'}</section></div>`;
@@ -298,14 +298,40 @@ function renderAdminLeads(){
   }
   function menuUnavailable(){root.innerHTML=`${nav()}<section class="wrap section"><div class="panel empty-panel"><h2>المنيو غير متاح حاليًا</h2><p class="muted">قد يكون المطعم بانتظار الموافقة أو لم ينشر المنيو بعد.</p><a class="btn" href="#">الصفحة الرئيسية</a></div></section>${footer()}`;}
   function renderMenu(){const d=state.menu;if(!d)return;const r=d.restaurant,lang=state.lang;document.title=`${r.name} | TAFRIVO`;
-    root.innerHTML=`<div class="menu-page" dir="${lang==='en'?'ltr':'rtl'}"><div class="menu-hero">${url(r.cover_url)?`<img class="restaurant-menu-cover" src="${url(r.cover_url)}" alt="">`:''}<div class="wrap"><div class="menu-nav">${brand()}<div class="lang-switch">${['ar','he','en'].map(x=>`<button data-act="lang" data-id="${x}" class="${lang===x?'active':''}">${x.toUpperCase()}</button>`).join('')}</div></div>${url(r.logo_url)?`<img class="restaurant-menu-logo" src="${url(r.logo_url)}" alt="شعار ${e(r.name)}">`:''}<h1>${e(r.name)}</h1><p>${e(r.description||textLang('تصفح القائمة واختر ما تحب','בחרו מנות מהתפריט','Browse the menu and choose your favorites'))}</p></div></div><div class="menu-sticky"><div class="wrap">${d.cats.map(c=>`<a href="#cat-${e(c.id)}" data-act="scrollcat" data-id="${e(c.id)}">${e(foodLang(c,'name'))}</a>`).join('')}</div></div><main class="menu-main">${d.cats.map(c=>{const its=d.items.filter(i=>i.category_id===c.id);return `<section id="cat-${e(c.id)}"><h2 class="menu-cat">${e(foodLang(c,'name'))}</h2>${its.length?its.map(it=>`<article class="itemcard"><div class="item-right">${url(it.image_url)?`<img src="${url(it.image_url)}" alt="">`:''}<div><h3>${e(foodLang(it,'name'))}</h3><p>${e(foodLang(it,'description'))}</p><div class="item-price">${money(it.price_ils)}</div></div></div><div><button class="btn ${it.is_available?'gold':'outline'} small" ${it.is_available?'':'disabled'} data-act="cartadd" data-id="${e(it.id)}">${it.is_available?textLang('إضافة','הוסף','Add'):textLang('نفدت','אזל','Sold out')}</button></div></article>`).join(''):`<p class="muted">${textLang('لا توجد أصناف بهذا القسم','אין מנות בקטגוריה','No items in this category')}</p>`}</section>`}).join('')}${!d.cats.length?`<div class="empty">${textLang('المنيو لسه ما فيه أكلات','התפריט עדיין ריק','Menu is empty for now')}</div>`:''}${menuOffersCard(r)}<div style="text-align:center;margin-top:40px;color:var(--muted);font-size:11px">Powered by TAFRIVO</div></main>${cartView()}</div>`;
+    root.innerHTML=`<div class="menu-page" dir="${lang==='en'?'ltr':'rtl'}"><div class="menu-hero">${url(r.cover_url)?`<img class="restaurant-menu-cover" src="${url(r.cover_url)}" alt="">`:''}<div class="wrap"><div class="menu-nav">${brand()}<div class="lang-switch">${['ar','he','en'].map(x=>`<button data-act="lang" data-id="${x}" class="${lang===x?'active':''}">${x.toUpperCase()}</button>`).join('')}</div></div>${url(r.logo_url)?`<img class="restaurant-menu-logo" src="${url(r.logo_url)}" alt="شعار ${e(r.name)}">`:''}<h1>${e(r.name)}</h1><p>${e(r.description||textLang('تصفح القائمة واختر ما تحب','בחרו מנות מהתפריט','Browse the menu and choose your favorites'))}</p></div></div><div class="menu-sticky"><div class="wrap">${d.cats.map(c=>`<a href="#cat-${e(c.id)}" data-act="scrollcat" data-id="${e(c.id)}">${e(foodLang(c,'name'))}</a>`).join('')}</div></div><main class="menu-main">${d.cats.map(c=>{const its=d.items.filter(i=>i.category_id===c.id);return `<section id="cat-${e(c.id)}"><h2 class="menu-cat">${e(foodLang(c,'name'))}</h2>${its.length?its.map(it=>`<article class="itemcard"><div class="item-right">${url(it.image_url)?`<img src="${url(it.image_url)}" alt="">`:''}<div><h3>${e(foodLang(it,'name'))}</h3><p>${e(foodLang(it,'description'))}</p><div class="item-price">${money(it.price_ils)}</div></div></div><div><button class="btn ${it.is_available?'gold':'outline'} small" ${it.is_available?'':'disabled'} data-act="cartadd" data-id="${e(it.id)}">${it.is_available?textLang('إضافة','הוסף','Add'):textLang('نفدت','אזל','Sold out')}</button></div></article>`).join(''):`<p class="muted">${textLang('لا توجد أصناف بهذا القسم','אין מנות בקטגוריה','No items in this category')}</p>`}</section>`}).join('')}${!d.cats.length?`<div class="empty">${textLang('المنيو لسه ما فيه أكلات','התפריט עדיין ריק','Menu is empty for now')}</div>`:''}${menuOffersCard(r)}<div style="text-align:center;margin-top:40px;color:var(--muted);font-size:11px">Powered by TAFRIVO</div></main>${cartView()}${breadChoiceDialog()}</div>`;
   }
-  function cartView(){if(!state.menu)return '';const items=state.menu.items,orders=Object.entries(state.cart).filter(([_,qty])=>qty>0).map(([id,qty])=>({item:items.find(x=>x.id===id),qty})).filter(x=>x.item);if(!orders.length)return '';
-    const total=orders.reduce((s,x)=>s+Number(x.item.price_ils)*x.qty,0);
-    return `<div class="cartbar"><div><b>${textLang('طلبك','ההזמנה שלך','Your order')} (${orders.reduce((s,x)=>s+x.qty,0)})</b><div class="small">${money(total)}</div></div><div class="actions"><button data-act="cartview">${textLang('مراجعة الطلب','צפה בהזמנה','Review')}</button></div></div>`;
+
+  // Cart keys are dish IDs or dishId|wrap / dishId|baguette when bread selection is enabled.
+  function cartLines(){
+    const items=state.menu?.items||[];
+    return Object.entries(state.cart).filter(([,qty])=>Number(qty)>0).map(([key,q])=>{
+      const [itemId,rawOption]=key.split('|');
+      const item=items.find(x=>x.id===itemId);
+      return {key,item,q:Number(q),option:['wrap','baguette'].includes(rawOption)?rawOption:''};
+    }).filter(x=>x.item);
   }
-  function renderCart(){const d=state.menu,entries=Object.entries(state.cart).filter(([_,q])=>q>0).map(([id,q])=>({item:d.items.find(i=>i.id===id),q})).filter(x=>x.item),total=entries.reduce((s,x)=>s+x.item.price_ils*x.q,0);
-    root.innerHTML=`${nav(`<button class="btn outline" data-act="backtomenu">رجوع للمنيو</button>`)}<main class="wrap section" style="max-width:760px"><section class="panel"><h2>${textLang('مراجعة الطلب','סיכום הזמנה','Order summary')}</h2>${entries.length?entries.map(x=>`<div class="listcard"><div><h3>${e(foodLang(x.item,'name'))}</h3><p>${money(x.item.price_ils)} × ${x.q}</p></div><div class="actions"><button class="btn outline small" data-act="cartminus" data-id="${e(x.item.id)}">−</button><b>${x.q}</b><button class="btn outline small" data-act="cartplus" data-id="${e(x.item.id)}">+</button></div></div>`).join(''):'<div class="empty">السلة فارغة</div>'}<h2 style="margin-top:20px">${textLang('المجموع','סה״כ','Total')}: ${money(total)}</h2><div class="field"><label>${textLang('رقم الطاولة أو ملاحظة (اختياري)','מספר שולחן או הערה','Table number / note')}</label><input id="cart-note" maxlength="240" placeholder="مثل: طاولة 4"></div><button ${entries.length?'':'disabled'} data-act="sendorder" class="btn gold block">${textLang('إرسال الطلب عبر واتساب','שלח הזמנה בוואטסאפ','Send via WhatsApp')}</button><p class="hint" style="margin-top:13px">${textLang('هذه نسخة طلب عبر واتساب، وليست نظام دفع أو إرسال مباشر للمطبخ.','ההזמנה נשלחת דרך וואטסאפ.','Orders are prepared for WhatsApp, not automatically sent to the kitchen.')}</p></section></main>${footer()}`;
+  function breadLabel(option){
+    return option==='wrap'?textLang('لفة','לאפה','Wrap'):
+      option==='baguette'?textLang('بجيت','בגט','Baguette'):'';
+  }
+  function breadChoiceDialog(){
+    const it=state.menu?.items.find(x=>x.id===state.breadChoiceItem&&x.bread_choices_enabled&&x.is_available);
+    if(!it)return '';
+    return `<div class="choice-overlay"><section class="choice-modal" role="dialog" aria-modal="true" aria-labelledby="bread-choice-heading"><button class="choice-close" type="button" data-act="cancel-bread" aria-label="Close">×</button><div class="choice-emblem">🥖</div><h2 id="bread-choice-heading">${textLang('كيف بتحب وجبتك؟','איך תרצו את המנה?','Choose your bread')}</h2><p class="muted">${e(foodLang(it,'name'))}</p><div class="bread-choice-buttons"><button class="bread-choice-button" type="button" data-act="choose-bread" data-id="${e(it.id)}" data-option="wrap"><span class="bread-icon">🌯</span><strong>${textLang('لفة','לאפה','Wrap')}</strong></button><button class="bread-choice-button" type="button" data-act="choose-bread" data-id="${e(it.id)}" data-option="baguette"><span class="bread-icon">🥖</span><strong>${textLang('بجيت','בגט','Baguette')}</strong></button></div><p class="hint">${textLang('اختار النوع حتى نضيف الوجبة للسلة','יש לבחור סוג לחם לפני הוספה לסל','Pick a bread type before adding to cart')}</p></section></div>`;
+  }
+  function cartView(){
+    if(!state.menu)return '';
+    const entries=cartLines();
+    if(!entries.length)return '';
+    const total=entries.reduce((s,x)=>s+Number(x.item.price_ils)*x.q,0);
+    return `<div class="cartbar"><div><b>${textLang('طلبك','ההזמנה שלך','Your order')} (${entries.reduce((s,x)=>s+x.q,0)})</b><div class="small">${money(total)}</div></div><div class="actions"><button data-act="cartview">${textLang('مراجعة الطلب','צפה בהזמנה','Review')}</button></div></div>`;
+  }
+  function renderCart(){
+    const d=state.menu;
+    if(!d)return;
+    const entries=cartLines(),total=entries.reduce((s,x)=>s+Number(x.item.price_ils)*x.q,0);
+    const onTable=state.orderKind==='table';
+    root.innerHTML=`${nav(`<button class="btn outline" data-act="backtomenu">${textLang('رجوع للمنيو','חזרה לתפריט','Back to menu')}</button>`)}<main class="wrap section" style="max-width:760px"><section class="panel"><h2>${textLang('مراجعة الطلب','סיכום הזמנה','Order summary')}</h2>${entries.length?entries.map(x=>`<div class="listcard"><div><h3>${e(foodLang(x.item,'name'))}${x.option?' — '+e(breadLabel(x.option)):''}</h3><p>${money(x.item.price_ils)} × ${x.q}</p></div><div class="actions"><button class="btn outline small" data-act="cartminus" data-key="${e(x.key)}">−</button><b>${x.q}</b><button class="btn outline small" data-act="cartplus" data-key="${e(x.key)}">+</button></div></div>`).join(''):'<div class="empty">السلة فارغة</div>'}<h2 style="margin-top:20px">${textLang('المجموع','סה״כ','Total')}: ${money(total)}</h2><div class="order-method"><h3>${textLang('وين بدك تاكل؟','איפה תאכלו?','Order type')} <span aria-hidden="true">*</span></h3><div class="order-type-options"><label class="order-option"><input type="radio" name="order_kind" value="table" ${onTable?'checked':''}><span>🍽️ ${textLang('على الطاولة','ישיבה במסעדה','Dine in')}</span></label><label class="order-option"><input type="radio" name="order_kind" value="takeaway" ${state.orderKind==='takeaway'?'checked':''}><span>🥡 ${textLang('تيك أواي – استلام من المطعم','טייק אוויי – איסוף עצמי','Takeaway – pickup')}</span></label></div></div>${onTable?`<div class="field"><label for="order-table">${textLang('رقم الطاولة *','מספר שולחן *','Table number *')}</label><input id="order-table" maxlength="32" required placeholder="${textLang('مثلاً 4','לדוגמה 4','e.g. 4')}" value="${e(state.orderTable)}"></div>`:''}<div class="field"><label for="cart-note">${textLang('ملاحظات على الطلب (اختياري)','הערות להזמנה (לא חובה)','Order notes (optional)')}</label><input id="cart-note" maxlength="240" value="${e(state.orderNote)}" placeholder="${textLang('مثلاً بدون بصل','למשל בלי בצל','e.g. no onions')}"></div><button ${entries.length?'':'disabled'} data-act="sendorder" class="btn gold block">${textLang('إرسال الطلب عبر واتساب','שלח הזמנה בוואטסאפ','Send via WhatsApp')}</button><p class="hint" style="margin-top:13px">${textLang('بعد الضغط، افتح واتساب واضغط إرسال حتى يوصل الطلب للمطعم.','אחרי פתיחת וואטסאפ יש ללחוץ שליחה כדי שהמסעדה תקבל את ההזמנה.','After WhatsApp opens, press Send to deliver the message to the restaurant.')}</p></section></main>${footer()}`;
   }
   function safePhone(v){let p=String(v||'').replace(/[^\d]/g,'');if(p.startsWith('00'))p=p.slice(2);if(p.startsWith('0'))p='972'+p.slice(1);return p;}
   async function uploadRestaurantImage(file){
@@ -382,7 +408,7 @@ function renderAdminLeads(){
       flash('تم حفظ إعدادات المطعم');await loadOwner();return;
     }
     if(type==='item-save'){
-      const row={restaurant_id:state.restaurant.id,category_id:g('category_id'),name_ar:g('name_ar'),name_he:g('name_he'),name_en:g('name_en'),description_ar:g('description_ar'),description_he:g('description_he'),description_en:g('description_en'),price_ils:Number(g('price_ils')),is_available:F.has('is_available'),is_visible:F.has('is_visible')};
+      const row={restaurant_id:state.restaurant.id,category_id:g('category_id'),name_ar:g('name_ar'),name_he:g('name_he'),name_en:g('name_en'),description_ar:g('description_ar'),description_he:g('description_he'),description_en:g('description_en'),price_ils:Number(g('price_ils')),is_available:F.has('is_available'),is_visible:F.has('is_visible'),bread_choices_enabled:F.has('bread_choices_enabled')};
       const file=F.get('image_file');if(file instanceof File&&file.size>0)row.image_url=await uploadRestaurantImage(file);
       if(state.itemEdit){const id=state.itemEdit;need(await sb.from('menu_items').update(row).eq('id',id).select('id').single());state.itemEdit=null;flash('تم تعديل الأكلة');}else{row.sort_order=state.items.length;need(await sb.from('menu_items').insert(row).select('id').single());flash('تم إضافة الأكلة');}
       await loadOwner();return;
@@ -538,20 +564,67 @@ function renderAdminLeads(){
     if(act==='download-qr'){const canvas=document.querySelector('#qr-target canvas');if(!canvas){flash('رمز QR مش جاهز','error');return;}const a=document.createElement('a');a.href=canvas.toDataURL('image/png');a.download=`TAFRIVO-${state.restaurant.slug}-QR.png`;a.click();return;}
     if(act==='lang'){state.lang=id;renderMenu();return;}
     if(act==='scrollcat'){document.getElementById('cat-'+id)?.scrollIntoView({behavior:'smooth',block:'start'});return;}
-    if(act==='cartadd'||act==='cartplus'){state.cart[id]=(state.cart[id]||0)+1;if(act==='cartplus')renderCart();else renderMenu();return;}
-    if(act==='cartminus'){state.cart[id]=Math.max(0,(state.cart[id]||0)-1);renderCart();return;}
+    if(act==='cartadd'){
+      const item=state.menu?.items.find(x=>x.id===id);
+      if(!item||!item.is_available)return;
+      if(item.bread_choices_enabled){state.breadChoiceItem=id;renderMenu();return;}
+      state.cart[id]=(state.cart[id]||0)+1;renderMenu();return;
+    }
+    if(act==='choose-bread'){
+      const choice=el.dataset.option;
+      const item=state.menu?.items.find(x=>x.id===id);
+      if(!item||!item.is_available||!item.bread_choices_enabled||!['wrap','baguette'].includes(choice))return;
+      const key=id+'|'+choice;
+      state.cart[key]=(state.cart[key]||0)+1;
+      state.breadChoiceItem=null;renderMenu();return;
+    }
+    if(act==='cancel-bread'){state.breadChoiceItem=null;renderMenu();return;}
+    if(act==='cartplus'||act==='cartminus'){
+      const key=el.dataset.key||id;
+      if(!cartLines().some(x=>x.key===key))return;
+      state.cart[key]=act==='cartplus'?(state.cart[key]||0)+1:Math.max(0,(state.cart[key]||0)-1);
+      renderCart();return;
+    }
     if(act==='cartview'){renderCart();return;}
     if(act==='backtomenu'){renderMenu();return;}
     if(act==='sendorder'){
-      const entries=Object.entries(state.cart).filter(([,q])=>q>0).map(([id,q])=>({item:state.menu.items.find(x=>x.id===id),q})).filter(x=>x.item);
+      const entries=cartLines();
       if(!entries.length)return;
-      const total=entries.reduce((s,x)=>s+x.item.price_ils*x.q,0), note=String(document.querySelector('#cart-note')?.value||'').trim();
-      const msg=[`طلب جديد من منيو ${state.menu.restaurant.name}`,'',...entries.map(x=>`${x.q} × ${foodLang(x.item,'name')} — ${money(x.item.price_ils*x.q)}`),'',`المجموع: ${money(total)}`,note?`ملاحظة/طاولة: ${note}`:''].filter(Boolean).join('\n');
+      if(!['table','takeaway'].includes(state.orderKind)){
+        alert(textLang('اختار أولاً: على الطاولة أو تيك أواي.','יש לבחור ישיבה במקום או איסוף עצמי.','Choose dine-in or takeaway first.'));
+        return;
+      }
+      const table=String(state.orderTable||'').trim().slice(0,32);
+      if(state.orderKind==='table'&&!table){
+        alert(textLang('اكتب رقم الطاولة قبل إرسال الطلب.','יש להזין מספר שולחן.','Enter your table number.'));
+        document.getElementById('order-table')?.focus();return;
+      }
+      const total=entries.reduce((s,x)=>s+Number(x.item.price_ils)*x.q,0);
+      const note=String(state.orderNote||'').trim().slice(0,240);
+      const method=state.orderKind==='table'?
+        textLang('نوع الطلب: على الطاولة — رقم الطاولة: ','סוג הזמנה: ישיבה במסעדה — שולחן: ','Order type: Dine in — table: ')+table:
+        textLang('نوع الطلب: تيك أواي — استلام من المطعم','סוג הזמנה: טייק אוויי — איסוף עצמי','Order type: Takeaway — pickup at restaurant');
+      const msg=[`طلب جديد من منيو ${state.menu.restaurant.name}`,'',method,'',
+        ...entries.map(x=>`${x.q} × ${foodLang(x.item,'name')}${x.option?' ('+breadLabel(x.option)+')':''} — ${money(Number(x.item.price_ils)*x.q)}`),
+        '',`المجموع: ${money(total)}`,note?`ملاحظات: ${note}`:''].filter(Boolean).join('\n');
       const phone=safePhone(state.menu.restaurant.public_phone);
-      if(phone.length<10||phone.length>15){try{await navigator.clipboard.writeText(msg);alert('المطعم ما حدّد رقم واتساب. نسخنا نص الطلب، ممكن تشاركه مع المطعم.');}catch{prompt('انسخ الطلب:',msg);}return;}
+      if(phone.length<10||phone.length>15){
+        try{await navigator.clipboard.writeText(msg);alert('المطعم ما حدّد رقم واتساب. نسخنا نص الطلب، ممكن تشاركه مع المطعم.');}
+        catch{prompt('انسخ الطلب:',msg);}
+        return;
+      }
       window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`,'_blank','noopener,noreferrer');return;
     }
   }
+  root.addEventListener('input',ev=>{
+    const t=ev.target;
+    if(t.id==='cart-note')state.orderNote=t.value.slice(0,240);
+    if(t.id==='order-table')state.orderTable=t.value.slice(0,32);
+  });
+  root.addEventListener('change',ev=>{
+    const t=ev.target;
+    if(t.name==='order_kind'&&['table','takeaway'].includes(t.value)){state.orderKind=t.value;renderCart();}
+  });
   root.addEventListener('submit',ev=>{const form=ev.target.closest('form[data-form]');if(form){ev.preventDefault();submitForm(form);}});
   document.addEventListener('click',ev=>{const el=ev.target.closest('[data-act]');if(!el)return;ev.preventDefault();handleClick(el);});
   window.addEventListener('hashchange',()=>{clearNotice();route();});
