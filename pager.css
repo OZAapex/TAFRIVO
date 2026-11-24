@@ -56,3 +56,9 @@
 .pager-import-tool input#pager-short-code{display:block;width:100%;min-height:50px;padding:12px 15px;border-radius:12px;border:1px solid #b3c7b9;direction:ltr;text-align:center;font:800 18px Manrope,system-ui,sans-serif;letter-spacing:1px;background:#fff;color:#153b2a}
 .pager-import-tool .btn{white-space:normal;text-align:center}
 .pager-card .pager-pill{overflow-wrap:anywhere}
+
+.pager-ready-optin{margin:18px 0;padding:15px;border:1px solid #bed8c4;border-radius:14px;background:#f5faf5}
+.pager-ready-consent{font-size:14px;font-weight:800;display:flex;align-items:flex-start;gap:10px;line-height:1.6}
+.pager-ready-consent input{width:21px;height:21px;margin-top:3px;accent-color:#146346;flex-shrink:0}
+.pager-ready-optin .field{margin-top:13px}
+.pager-ready-optin input[type=tel]{background:#fff;color:#123d2b;width:100%}
