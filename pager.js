@@ -37,7 +37,23 @@
   function clearImport(encoded){
     try{if(pendingImport()?.encoded===encoded)sessionStorage.removeItem(pendingKey);}catch{}
   }
+  const shortPendingKey='tafrivo-pager-confirm-short';
+  function pendingShort(){
+    try{
+      const p=JSON.parse(sessionStorage.getItem(shortPendingKey)||'null');
+      if(!p||!/^[0-9A-F]{16}$/.test(p.code)||Date.now()-p.saved_at>600000||Date.now()<p.saved_at-60000)return null;
+      return p.code;
+    }catch{return null;}
+  }
+  function rememberShort(code){
+    try{sessionStorage.setItem(shortPendingKey,JSON.stringify({code,saved_at:Date.now()}));}catch{}
+  }
+  function clearShort(code){
+    try{if(pendingShort()===code)sessionStorage.removeItem(shortPendingKey);}catch{}
+  }
   function resumeAfterLogin(){
+    const shortCode=pendingShort();
+    if(shortCode)return '#pager/confirm/'+shortCode;
     const p=pendingImport();return p?'#pager/import/'+p.encoded:null;
   }
   function extractImportHash(value){
@@ -98,6 +114,23 @@
       '\nلصاحب المطعم فقط — بعد التأكد من رسالة واتساب، افتح الرابط واضغط قبول:\n'+staff+
       '\n\nلا يبدأ التحضير ولا المتابعة قبل تأكيد صاحب المطعم.'};
   }
+  async function prepareQuickCheckout(args){
+    const old=prepareCheckout(args);
+    const saved=JSON.parse(sessionStorage.getItem('tafrivo-pager-checkout')||'null');
+    if(!saved?.envelope?.payload||!saved.envelope.token)throw Error(t('تعذّر تجهيز كود الطلب','לא ניתן להכין קוד הזמנה','Could not prepare order code'));
+    const result=val(await sb.rpc('pager_prepare_short_order',{
+      p_payload:saved.envelope.payload,p_token:saved.envelope.token
+    }));
+    const code=String(result?.code||'');
+    if(!/^[0-9A-F]{16}$/.test(code))throw Error(t('تعذّر إنشاء كود التأكيد','לא נוצר קוד אישור','Confirmation code unavailable'));
+    const shortUrl=link('pager/confirm/'+code);
+    return {...old,code,
+      suffix:'\n\n📟 TAFRIVO SMART PAGER'+
+      '\nكود التأكيد: '+code+
+      '\n✅ لصاحب المطعم فقط: اضغط رابط التأكيد التالي بعد وصول الطلب والتحقق منه:'+
+      '\n'+shortUrl+
+      '\nلا يبدأ التحضير إلا بعد قبول المطعم.'};
+  }
   function showTrackingLink(container,details){
     if(!container||!details)return;
     container.innerHTML='<div class="pager-tracking-link"><b>📟 '+t('رابط متابعة طلبك','קישור מעקב הזמנה','Your order tracker')+' #'+esc(details.reference)+'</b><p>'+t('بعد ما تبعث رسالة واتساب، صاحب المطعم لازم يقبل الطلب أولًا. اضغط على الرابط التالي واحفظه.','יש לשלוח את הודעת WhatsApp. המעקב מתחיל רק לאחר אישור המסעדה.','Send your WhatsApp message. Tracking starts only after the restaurant approves.')+'</p><a class="btn gold" href="'+esc(details.tracking)+'">'+t('متابعة طلبي','מעקב הזמנה','Track order')+'</a></div>';
@@ -142,6 +175,59 @@
         poll=setInterval(()=>{if(location.hash.startsWith('#pager/track/'))showTracking(ref,token,{silent:true}).catch(()=>{});else stop();},12000);
       }
     }catch(e){if(!silent)root().innerHTML=heading('<div class="banner error">'+esc(msg(e))+'</div>');}
+  }
+  async function showConfirm(code){
+    stop();
+    code=String(code||'').trim().toUpperCase();
+    if(!/^[0-9A-F]{16}$/.test(code)){
+      root().innerHTML=heading('<div class="banner error">'+t('كود تأكيد غير صالح','קוד אישור לא תקין','Invalid confirmation code')+'</div>');return;
+    }
+    rememberShort(code);
+    root().innerHTML=heading('<section class="pager-card"><p>'+t('جاري تحميل تفاصيل الطلب…','טוען פרטי הזמנה…','Loading order…')+'</p></section>');
+    try{
+      const {data:{user}}=await sb.auth.getUser();
+      if(!user){
+        root().innerHTML=heading('<section class="pager-card"><h2>'+t('لازم تدخل بحساب المطعم أولًا','יש להתחבר לחשבון המסעדה','Sign in to the restaurant account')+'</h2>'+
+        '<p>'+t('بعد الدخول بنفس المتصفح بنرجعك تلقائيًا لهذا الطلب. ما رح ينقبل أي طلب إلا لما تراجعه وتضغط قبول.','לאחר התחברות תחזרו להזמנה. שום הזמנה לא מתקבלת אוטומטית.','After signing in, you will return to this order. It will not be accepted automatically.')+'</p>'+
+        '<p class="pager-pill">'+esc(code)+'</p><a href="#login" class="btn gold">'+t('تسجيل الدخول ومراجعة الطلب','התחברות ובדיקת הזמנה','Sign in and review order')+'</a></section>');return;
+      }
+      const order=val(await sb.rpc('pager_review_short_order',{p_code:code}));
+      const invalidItems=(order.lines||[]).some(item=>item.available===false);
+      const type=order.kind==='table'
+        ?t('على الطاولة','לשבת במקום','Dine in')+' '+esc(order.table||'')
+        :t('تيك أواي','איסוף עצמי','Takeaway');
+      root().innerHTML=heading(
+        '<section class="pager-card"><div class="pager-pill">'+t('تأكيد طلب واتساب','אישור הזמנת WhatsApp','Confirm WhatsApp order')+'</div>'+
+        '<h2>'+esc(order.restaurant_name)+'</h2><p><b>#'+esc(short(order.ref))+'</b> · '+type+'</p>'+
+        '<div class="pager-items">'+(order.lines||[]).map(item=>'<div><span>'+esc(item.qty)+' × '+esc(item.name)+
+        (item.bread?' ('+esc(item.bread==='wrap'?'لفة':'بجيت')+')':'')+(item.available===false?' ⛔':'')+
+        '</span><span>'+price(Number(item.price)*Number(item.qty))+'</span></div>').join('')+
+        '<strong>'+t('المجموع','סה"כ','Total')+': '+price(order.total)+'</strong></div>'+
+        (order.note?'<p>'+t('ملاحظات: ','הערות: ','Notes: ')+esc(order.note)+'</p>':'')+
+        '<div class="pager-warning">'+t('راجع رسالة واتساب اللي وصلتك: هل رقم الطلب والأكلات نفس التفاصيل؟ لا تقبل الطلب إلا بعد التأكد.','בדקו שהודעת ה-WhatsApp באמת התקבלה ושהפרטים תואמים.','Verify that this exact WhatsApp message was received before accepting.')+'</div>'+
+        (order.accepted?'<div class="banner">'+t('هذا الطلب تم قبوله مسبقًا.','ההזמנה כבר אושרה.','This order is already accepted.')+'</div>':
+        invalidItems?'<div class="banner error">'+t('في صنف غير متوفر. اطلب طلب جديد.','אחד הפריטים אינו זמין.','An item is unavailable; request a new order.')+'</div>':
+        '<button class="btn gold block" data-pager-action="accept-short" data-code="'+esc(code)+'">'+t('✅ تأكدت من واتساب — قبول الطلب','אימתתי ב-WhatsApp — אישור הזמנה','Verified WhatsApp — Accept order')+'</button>')+
+        '<div id="pager-import-result"></div></section>');
+    }catch(err){root().innerHTML=heading('<section class="pager-card"><div class="banner error">'+esc(msg(err))+'</div><a class="btn outline" href="#app">'+t('لوحة المطعم','לוח המסעדה','Dashboard')+'</a></section>');}
+  }
+  async function acceptShort(code,button){
+    if(!confirm(t('تأكدت إن رسالة واتساب وصلت للمطعم بنفس رقم الطلب والأكلات؟','בדקת שהודעת WhatsApp זהה להזמנה?','Did you verify the matching WhatsApp order?')))return;
+    button.disabled=true;
+    try{
+      val(await sb.rpc('pager_accept_short_order',{p_code:code}));
+      clearShort(code);
+      const target=root().querySelector('#pager-import-result');
+      if(target)target.innerHTML='<div class="banner">'+t('تم قبول الطلب. رح يظهر بلوحة Smart Pager.','ההזמנה אושרה ותופיע בלוח Smart Pager.','Order accepted; it is now on your Smart Pager dashboard.')+'</div>'+
+        '<a class="btn soft" href="#app">'+t('افتح لوحة المطعم','פתח לוח מסעדה','Open dashboard')+'</a>';
+      button.remove();
+    }catch(err){button.disabled=false;alert(msg(err));}
+  }
+  function readConfirmCode(value){
+    const raw=String(value||'').trim().toUpperCase();
+    const match=raw.match(/#PAGER\/CONFIRM\/([0-9A-F]{16})/)||raw.match(/^([0-9A-F]{16})$/);
+    if(!match)throw Error(t('أدخل كود التأكيد المكوّن من 16 خانة أو رابط التأكيد المختصر.','הזינו קוד אישור בן 16 תווים.','Enter the 16-character confirmation code or its link.'));
+    return match[1];
   }
   async function showImport(encoded){
     stop();
@@ -204,15 +290,17 @@
       };
       const card=x=>'<article class="pager-order"><div class="pager-order-title"><strong>#'+esc(short(x.client_ref))+'</strong><span class="pager-status '+esc(x.status)+'">'+esc(statusLabels[x.status]||x.status)+'</span></div><p class="small muted">'+esc(dateFmt(x.created_at))+' · '+(x.order_type==='table'?t('طاولة ','שולחן ','Table ')+esc(x.table_no):t('تيك أواي','איסוף עצמי','Takeaway'))+'</p>'+
         '<p>'+((x.pager_order_items||[]).map(i=>esc(i.quantity)+'× '+esc(i.name)+(i.bread_option?' ('+esc(i.bread_option==='wrap'?'لفة':'بجيت')+')':'')).join(' · '))+'</p><div class="pager-order-title"><b>'+price(x.subtotal_ils)+'</b><div class="actions">'+buttons(x)+'</div></div></article>';
-      const pending=pendingImport(restaurant.id);
+      const pending=pendingImport(restaurant.id),shortWaiting=pendingShort();
       panel.innerHTML='<section class="panel"><h2>📟 TAFRIVO Smart Pager</h2><p class="muted">'+t('تأكيد الطلبات يتم فقط بعد وصول رسالة واتساب. الضغط من الزبون وحده ما بضيف أي طلب للوحة.','הזמנה נכנסת למערכת רק אחרי אישור מתוך WhatsApp.','Orders enter this dashboard only after verified WhatsApp acceptance.')+'</p>'+
         '<label class="pager-switch"><input type="checkbox" id="pager-enabled" '+(enabled?'checked':'')+'> '+t('تفعيل Smart Pager لهذا المطعم','הפעלת Smart Pager למסעדה','Enable Smart Pager for this restaurant')+'</label><button class="btn gold" data-pager-action="save-settings">'+t('حفظ الإعداد','שמירת הגדרה','Save setting')+'</button>'+
         '<div class="pager-import-tool">'+
-        (pending?'<div class="banner warn"><b>'+t('في طلب واتساب لسه بحاجة لتأكيدك.','הזמנה ממתינה לאישור.','WhatsApp order awaiting your review.')+'</b> <a class="btn gold small" href="#pager/import/'+esc(pending.encoded)+'">'+t('راجع الطلب','בדיקת ההזמנה','Review order')+'</a></div>':'')+
-        '<h3>'+t('تأكيد طلب من رسالة واتساب','אישור הזמנה מ-WhatsApp','Confirm order from WhatsApp')+'</h3>'+
-        '<p class="small muted">'+t('من رسالة واتساب اللي وصلت للمطعم، انسخ رابط تأكيد الطلب والصقه هون. بعد مراجعة الأصناف اضغط قبول. الدخول للحساب وحده مش بقبل الطلب.','יש להדביק קישור אישור מההודעה ולבדוק לפני הקבלה.','Copy the confirmation link from the WhatsApp message, paste it here, and verify before accepting.')+'</p>'+
-        '<textarea id="pager-import-input" rows="3" maxlength="10000" placeholder="'+t('الصق رابط التأكيد من رسالة واتساب','הדביקו קישור אישור','Paste the WhatsApp confirmation link')+'"></textarea>'+
-        '<button type="button" class="btn gold" data-pager-action="open-import">'+t('فتح شاشة التأكيد','פתיחת מסך האישור','Open confirmation screen')+'</button></div>'+
+        (shortWaiting?'<div class="banner warn"><b>'+t('في طلب قصير كنت تراجعه.','יש הזמנה שממתינה לבדיקה.','You have a pending short confirmation.')+'</b> <a class="btn gold small" href="#pager/confirm/'+esc(shortWaiting)+'">'+t('الرجوع للطلب','חזרה להזמנה','Return to order')+'</a></div>':'')+
+        '<h3>'+t('تأكيد طلب من واتساب','אישור הזמנה מ-WhatsApp','Approve WhatsApp order')+'</h3>'+
+        '<p class="small muted">'+t('الأسرع: اضغط رابط «تأكيد الطلب» في رسالة واتساب مباشرة. وإذا الرابط ما فتح، اكتب الكود القصير الموجود بالرسالة هون.','הדרך הקלה: לחצו על קישור האישור ב-WhatsApp. אפשר גם להזין קוד.','Tap the confirmation link in WhatsApp. If needed, enter its short code here.')+'</p>'+
+        '<input id="pager-short-code" maxlength="300" autocomplete="off" placeholder="AB12CD34EF56AB78" inputmode="text" dir="ltr" />'+
+        '<button class="btn gold" type="button" data-pager-action="open-short">'+t('فتح الطلب ومراجعته','פתיחת ההזמנה','Review order')+'</button>'+
+        (pending?'<details><summary>'+t('تأكيد طلب قديم بالرابط الطويل','אישור הזמנה ישנה','Legacy long-link confirmation')+'</summary><p class="small muted">'+t('للطلبات القديمة فقط','להזמנות ישנות בלבד','Old requests only')+'</p><a class="btn outline small" href="#pager/import/'+esc(pending.encoded)+'">'+t('فتح الطلب القديم','פתיחת הזמנה ישנה','Open old request')+'</a></details>':'')+
+        '</div>'+
         '<p class="hint">'+t('تجريبي: الإشعار على صفحة المتابعة فقط، والتنبيه من المتصفح أثناء فتحها. ما بنرسل إشعارات خلفية حاليًا.','ניסוי: מעקב והתראות רק כשהדף פתוח.','Pilot: tracking page and foreground alerts only. No background push yet.')+'</p></section>'+
         '<div class="pager-summary"><div><strong>'+active.length+'</strong><span>'+t('طلبات نشطة','הזמנות פעילות','Active')+'</span></div><div><strong>'+orders.filter(x=>x.status==='ready').length+'</strong><span>'+t('جاهزة','מוכנות','Ready')+'</span></div><div><strong>'+orders.filter(x=>x.status==='collected').length+'</strong><span>'+t('تم التسليم','נמסרו','Collected')+'</span></div></div>'+
         '<section class="panel"><div class="flexbetween"><h2>'+t('الطلبات المقبولة','הזמנות שאושרו','Accepted orders')+'</h2><button class="btn outline small" data-pager-action="refresh">'+t('تحديث','רענון','Refresh')+'</button></div>'+
@@ -239,6 +327,11 @@
     const b=event.target.closest('[data-pager-action]');if(!b)return;
     event.preventDefault();
     if(b.dataset.pagerAction==='accept')accept(b.dataset.envelope,b).catch(err=>alert(msg(err)));
+    else if(b.dataset.pagerAction==='accept-short')acceptShort(b.dataset.code,b).catch(err=>alert(msg(err)));
+    else if(b.dataset.pagerAction==='open-short'){
+      try{location.hash='#pager/confirm/'+readConfirmCode(ownerPanel?.querySelector('#pager-short-code')?.value||'');}
+      catch(err){alert(msg(err));}
+    }
     else if(b.dataset.pagerAction==='copy-import'){
       const target=link('pager/import/'+b.dataset.encoded);
       if(navigator.clipboard?.writeText)navigator.clipboard.writeText(target).then(()=>alert(t('تم نسخ الرابط','הקישור הועתק','Link copied'))).catch(()=>prompt('Copy link:',target));
@@ -256,5 +349,5 @@
       ownerAction(b).catch(err=>alert(msg(err)));
   });
   window.addEventListener('hashchange',()=>{if(!location.hash.startsWith('#pager/track/'))stop();});
-  window.TAFRIVO_PAGER={prepareCheckout,lastTracking,showTrackingLink,showTracking,showImport,renderOwner,resumeAfterLogin,extractImportHash};
+  window.TAFRIVO_PAGER={prepareCheckout,prepareQuickCheckout,lastTracking,showTrackingLink,showTracking,showImport,showConfirm,renderOwner,resumeAfterLogin,extractImportHash,readConfirmCode};
 })();
