@@ -59,7 +59,7 @@
       const result=get(await db.rpc('loyalty_get_card',{p_slug:slug,p_token:token}));
       if(current.token!==token)return;
       current.card=result;
-      const p=result,goal=Number(p.goal)||10,shown=Math.min(goal,Number(p.stamps)%goal);
+      const p=result,goal=Number(p.goal)||10,shown=Number(p.pending_rewards)>0?goal:Math.min(goal,Number(p.stamps)%goal);
       const stamps=Array.from({length:goal},(_,i)=>'<span class="loyalty-stamp '+(i<shown?'earned':'')+'">'+(i<shown?'★':'☆')+'</span>').join('');
       const notices=Array.isArray(p.notices)?p.notices:[];
       const birthday=p.birthday_today?'<div class="loyalty-birthday-banner">🎂 '+L('كل عام وإنت بخير!','יום הולדת שמח!','Happy Birthday!')+' '+escape(p.birthday_reward_text)+'</div>':'';
@@ -98,22 +98,22 @@
   }
   function startNearby(){
     const c=current.card;
-    const status=document.querySelector('.loyalty-near-status');
-    if(!c?.location_enabled||!navigator.geolocation){if(status)status.textContent=L('الموقع مش متاح على هذا الجهاز.','המיקום אינו זמין','Location unavailable');return;}
+    const status=()=>document.querySelector('.loyalty-near-status');
+    if(!c?.location_enabled||!navigator.geolocation){if(status())status().textContent=L('الموقع مش متاح على هذا الجهاز.','המיקום אינו זמין','Location unavailable');return;}
     cancelWatch();
-    if(status)status.textContent=L('جاري طلب إذن الموقع…','מבקש הרשאת מיקום…','Requesting location permission…');
+    if(status())status().textContent=L('جاري طلب إذن الموقع…','מבקש הרשאת מיקום…','Requesting location permission…');
     current.watchId=navigator.geolocation.watchPosition(pos=>{
       const d=distanceM(pos.coords.latitude,pos.coords.longitude,c.latitude,c.longitude);
-      if(!status)return;
+      if(!status())return;
       if(d<=c.radius_m){
-        status.textContent=L('إنت قريب من المطعم!','אתם קרובים למסעדה!','You are near the restaurant!');
+        status().textContent=L('إنت قريب من المطعم!','אתם קרובים למסעדה!','You are near the restaurant!');
         if(Date.now()-current.lastNear>60*60*1000){
           current.lastNear=Date.now();
           if(NotificationAvailable()&&Notification.permission==='granted')new Notification(c.restaurant_name,{body:c.near_message,icon:'assets/favicon.png'});
           else alert(c.near_message);
         }
-      }else status.textContent=L('المسافة التقريبية: ','מרחק משוער: ','Approximate distance: ')+Math.round(d)+' m';
-    },err=>{if(status)status.textContent=L('تعذّر تحديد الموقع: ','שגיאת מיקום: ','Location error: ')+err.message;},{enableHighAccuracy:false,maximumAge:30000,timeout:15000});
+      }else status().textContent=L('المسافة التقريبية: ','מרחק משוער: ','Approximate distance: ')+Math.round(d)+' m';
+    },err=>{if(status())status().textContent=L('تعذّر تحديد الموقع: ','שגיאת מיקום: ','Location error: ')+err.message;},{enableHighAccuracy:false,maximumAge:30000,timeout:15000});
   }
   async function loadOwner(container,restaurant){
     current.ownerRoot=container;current.ownerRestaurant=restaurant;
