@@ -62,3 +62,11 @@
 .pager-ready-consent input{width:21px;height:21px;margin-top:3px;accent-color:#146346;flex-shrink:0}
 .pager-ready-optin .field{margin-top:13px}
 .pager-ready-optin input[type=tel]{background:#fff;color:#123d2b;width:100%}
+
+/* Super-admin-only activation: mobile-safe per-restaurant controls. */
+.pager-admin-list{display:grid;gap:11px;margin-top:17px}
+.pager-admin-line{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:#f9fbf8;border:1px solid #dce9df;border-radius:14px;padding:13px 16px}
+.pager-admin-line strong{color:#123b2d}
+.pager-admin-line p{margin:3px 0 0}
+.pager-admin-restaurant-setting{padding:15px 0 19px;border-bottom:1px solid #e0e7e1}
+@media(max-width:520px){.pager-admin-line .actions{width:100%;justify-content:space-between}.pager-admin-line .actions .btn{flex:1}}
