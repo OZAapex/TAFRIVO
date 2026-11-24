@@ -43,7 +43,9 @@
   function extractImportHash(value){
     const raw=String(value||'').trim();
     if(raw.length>10000)throw Error(t('الرابط طويل جدًا','הקישור ארוך מדי','Link too long'));
-    const options=[raw,...(raw.match(/https?:\/\/[^\s<>"']+/g)||[]),...(raw.match(/#pager\/import\/[A-Za-z0-9_-]+/g)||[])];
+    const links=raw.match(/https?:\/\/[^\s<>"']+/g)||[];
+    const fragments=links.length?[]:(raw.match(/#pager\/import\/[A-Za-z0-9_-]+/g)||[]);
+    const options=[raw,...links,...fragments];
     for(const option of options){
       try{
         const u=new URL(option,location.origin+location.pathname);
