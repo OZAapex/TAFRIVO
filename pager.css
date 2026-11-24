@@ -1,0 +1,47 @@
+/* TAFRIVO Smart Pager — pilot, visually isolated from the menu and WhatsApp checkout */
+.pager-page{min-height:100vh;background:#f3f6f1;color:#183a2d;font-family:Cairo,system-ui,sans-serif}
+.pager-header{background:#092e23;color:#e6cb8b;display:flex;justify-content:space-between;align-items:center;padding:19px max(18px,calc((100vw - 900px)/2));gap:16px;font:800 13px Manrope,Cairo,sans-serif;letter-spacing:.8px}
+.pager-brand{color:#e6cb8b;font-size:22px;letter-spacing:2px}
+.pager-container{max-width:860px;margin:auto;padding:30px 16px 75px}
+.pager-footer{text-align:center;font:600 11px Manrope,Cairo,sans-serif;color:#738579;padding:20px 0}
+.pager-phone{border-radius:30px;border:2px solid #d6b36f;background:radial-gradient(circle at 20% 5%,#246648 0,#0e382a 54%,#092b21 100%);color:#fff;max-width:420px;margin:0 auto;padding:28px 24px 35px;box-shadow:0 24px 70px #062a1c48;text-align:center}
+.pager-topline{display:flex;align-items:center;justify-content:space-between;color:#ecd098;font:900 11px Manrope,Cairo,sans-serif;letter-spacing:1px}
+.pager-logo{font-size:38px;margin:18px auto 6px}
+.pager-phone h2{font-size:25px;color:#fff;margin-bottom:3px}
+.pager-phone h3{font-size:23px;color:#f4deaa;margin:6px 0 10px}
+.pager-code{font:900 24px Manrope,Cairo,sans-serif;color:#d9b56f;margin:8px 0}
+.pager-bigicon{font-size:55px;line-height:1.5;margin-top:14px}
+.pager-progress{display:flex;gap:7px;margin:22px auto}
+.pager-progress span{flex:1;height:7px;border-radius:8px;background:#416655}
+.pager-progress span.done{background:#e5c47c}
+.pager-detail{color:#d4e5d9;font-size:14px;min-height:48px}
+.pager-phone small{display:block;color:#afc7b7;font-size:11px;line-height:1.7;margin-top:13px}
+.pager-items{border:1px solid #aac1b438;border-radius:14px;padding:12px;margin:18px 0;display:grid;gap:11px;text-align:start}
+.pager-items>div{display:flex;justify-content:space-between;gap:10px;font-size:13px}
+.pager-items strong{text-align:end}
+.pager-notify{white-space:normal!important;font-size:12px!important;line-height:1.4!important}
+.pager-card{background:#fff;border:1px solid #dbe8db;border-radius:22px;padding:26px;box-shadow:0 12px 40px #092d230e;max-width:700px;margin:22px auto}
+.pager-card h2{font-size:24px}
+.pager-card .pager-items{border-color:#d5e2d5}
+.pager-pill{display:inline-flex;padding:6px 12px;border-radius:50px;color:#8b6114;background:#fff3d9;font-weight:800;font-size:12px;margin-bottom:18px}
+.pager-warning{background:#fff5df;border:1px solid #e9d2a4;color:#725319;border-radius:13px;font-size:13px;padding:14px;margin:18px 0}
+.pager-tracking-link{margin:14px 0;padding:18px;background:#ecf5ec;border:1px solid #b6d9bd;border-radius:15px}
+.pager-tracking-link b{color:#12432e}
+.pager-tracking-link p{font-size:12px;margin:6px 0 14px}
+.pager-switch{display:flex;gap:10px;align-items:center;font-weight:800;margin:15px 0}
+.pager-switch input{accent-color:#166247;width:19px;height:19px}
+.pager-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:18px 0}
+.pager-summary>div{background:white;border:1px solid #d9e5db;border-radius:16px;padding:18px}
+.pager-summary strong{font:900 29px Manrope,Cairo,sans-serif;display:block;color:#123b2c}
+.pager-summary span{display:block;font-size:12px;color:#687d70}
+.pager-orders{display:grid;gap:13px;margin-top:15px}
+.pager-order{border-radius:15px;border:1px solid #d7e6da;padding:17px;background:#fbfdfa}
+.pager-order p{font-size:13px;margin:5px 0}
+.pager-order-title{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.pager-order-title strong{font:900 16px Manrope,Cairo,sans-serif;color:#144733}
+.pager-status{display:inline-block;font-size:11px;border-radius:30px;background:#e9ece8;padding:4px 10px;font-weight:900}
+.pager-status.ready{background:#dcf3e2;color:#13623b}
+.pager-status.preparing{background:#fff1d7;color:#855c09}
+.pager-status.cancelled{background:#ffe9e4;color:#9d403b}
+.pager-status.collected{background:#dcefe9;color:#236b5d}
+@media(max-width:560px){.pager-container{padding:16px 13px 55px}.pager-phone{padding:20px 16px;border-radius:24px}.pager-card{padding:19px 15px}.pager-summary{gap:7px}.pager-summary>div{padding:13px 9px}.pager-summary strong{font-size:22px}.pager-order-title .actions{width:100%}.pager-order-title .actions button{flex:1}}
