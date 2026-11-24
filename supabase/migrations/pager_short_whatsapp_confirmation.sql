@@ -88,7 +88,7 @@ BEGIN
    v_total=v_total+v_qty*v_item.price_ils;
    IF v_total>3000 THEN RAISE EXCEPTION 'Order too large for Smart Pager'; END IF;
  END LOOP;
- v_code=upper(encode(gen_random_bytes(8),'hex'));
+ v_code=upper(encode(extensions.gen_random_bytes(8),'hex'));
  INSERT INTO public.pager_pending_requests(restaurant_id,client_ref,confirmation_code,tracking_hash,payload)
  VALUES(v_rest,v_ref,v_code,v_token_hash,p_payload);
  RETURN jsonb_build_object('code',v_code,'client_ref',v_ref,'expires_at',now()+interval '10 minutes','duplicate',false);
