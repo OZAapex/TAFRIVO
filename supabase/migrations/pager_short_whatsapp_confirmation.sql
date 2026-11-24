@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS public.pager_pending_requests (
   CHECK(expires_at > created_at)
 );
 CREATE INDEX IF NOT EXISTS pager_pending_recent_by_restaurant ON public.pager_pending_requests(restaurant_id,created_at DESC);
+CREATE INDEX IF NOT EXISTS pager_pending_expiry_idx ON public.pager_pending_requests(expires_at);
 ALTER TABLE public.pager_pending_requests ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.pager_pending_requests FROM PUBLIC,anon,authenticated;
 
@@ -47,6 +48,8 @@ BEGIN
  IF NOT EXISTS(SELECT 1 FROM public.pager_settings s JOIN public.restaurants r ON r.id=s.restaurant_id
  WHERE s.restaurant_id=v_rest AND s.enabled AND r.status='approved' AND r.is_published)
  THEN RAISE EXCEPTION 'Smart Pager not available'; END IF;
+ -- Prune short-lived request data once it is safely older than the confirmation window.
+ DELETE FROM public.pager_pending_requests WHERE expires_at < now()-interval '1 day';
  v_token_hash=encode(sha256(convert_to(p_token,'UTF8')),'hex');
  SELECT * INTO v_existing FROM public.pager_pending_requests
  WHERE client_ref=v_ref;
