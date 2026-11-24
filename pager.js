@@ -15,7 +15,7 @@
   const msg=e=>e?.message||String(e||'حدث خطأ');
   const heading=title=>'<div class="pager-page"><header class="pager-header"><a href="#" class="pager-brand">✦ TAFRIVO</a><span>SMART PAGER</span></header><main class="pager-container">'+title+'</main><footer class="pager-footer">Powered by OZA APEX</footer></div>';
   const dateFmt=x=>new Date(x).toLocaleString('ar-IL',{hour:'2-digit',minute:'2-digit',month:'short',day:'numeric'});
-  let poll=null,lastStatus=null,ownerRestaurant=null,ownerPanel=null,ownerOrders=[];
+  let poll=null,lastStatus=null,ownerRestaurant=null,ownerPanel=null,ownerOrders=[],ownerIsAdmin=false,adminPanel=null,adminRestaurants=[];
   function stop(){if(poll)clearInterval(poll);poll=null;lastStatus=null;}
   const pendingKey='tafrivo-pager-pending-import';
   function pendingImport(restaurantId){
@@ -297,9 +297,9 @@
       catch{prompt(t('انسخ رد الجهوزية لمحادثة الزبون','העתקת הודעת המוכנות','Copy ready reply into the customer chat'),text);}
     }
   }
-  async function renderOwner(panel,restaurant){
+  async function renderOwner(panel,restaurant,isSuperAdmin=false){
     if(!panel||!restaurant)return;
-    ownerPanel=panel;ownerRestaurant=restaurant;
+    ownerPanel=panel;ownerRestaurant=restaurant;ownerIsAdmin=!!isSuperAdmin;
     panel.innerHTML='<section class="panel">'+t('جاري تحميل الطلبات…','טוען הזמנות…','Loading orders…')+'</section>';
     try{
       const [s,o]=await Promise.all([
@@ -320,20 +320,51 @@
         '<p>'+((x.pager_order_items||[]).map(i=>esc(i.quantity)+'× '+esc(i.name)+(i.bread_option?' ('+esc(i.bread_option==='wrap'?'لفة':'بجيت')+')':'')).join(' · '))+'</p><div class="pager-order-title"><b>'+price(x.subtotal_ils)+'</b><div class="actions">'+buttons(x)+'</div></div></article>';
       const pending=pendingImport(restaurant.id),shortWaiting=pendingShort();
       panel.innerHTML='<section class="panel"><h2>📟 TAFRIVO Smart Pager</h2><p class="muted">'+t('تأكيد الطلبات يتم فقط بعد وصول رسالة واتساب. الضغط من الزبون وحده ما بضيف أي طلب للوحة.','הזמנה נכנסת למערכת רק אחרי אישור מתוך WhatsApp.','Orders enter this dashboard only after verified WhatsApp acceptance.')+'</p>'+
-        '<label class="pager-switch"><input type="checkbox" id="pager-enabled" '+(enabled?'checked':'')+'> '+t('تفعيل Smart Pager لهذا المطعم','הפעלת Smart Pager למסעדה','Enable Smart Pager for this restaurant')+'</label><button class="btn gold" data-pager-action="save-settings">'+t('حفظ الإعداد','שמירת הגדרה','Save setting')+'</button>'+
-        '<div class="pager-import-tool">'+
+        (ownerIsAdmin?'<div class="pager-admin-restaurant-setting"><label class="pager-switch"><input type="checkbox" id="pager-enabled" '+(enabled?'checked':'')+'> '+t('تفعيل Smart Pager لهذا المطعم','הפעלת Smart Pager למסעדה','Enable Smart Pager for this restaurant')+'</label><button class="btn gold" data-pager-action="save-settings">'+t('حفظ الإعداد','שמירת הגדרה','Save setting')+'</button><p class="hint">'+t('هذا التحكم متاح لمدير TAFRIVO فقط.','זמין למנהל TAFRIVO בלבד.','Only the TAFRIVO administrator can change this setting.')+'</p></div>':'<div class="banner '+(enabled?'':'warn')+'">'+(enabled?t('📟 Smart Pager مفعّل لهذا المطعم بواسطة إدارة TAFRIVO.','Smart Pager פעיל באישור הנהלת TAFRIVO.','Smart Pager is enabled by TAFRIVO administration.'):t('🔒 Smart Pager غير مفعّل لهذا المطعم. التفعيل فقط من إدارة TAFRIVO.','🔒 Smart Pager כבוי. רק הנהלת TAFRIVO יכולה להפעילו.','🔒 Smart Pager is disabled. Only TAFRIVO administration can enable it.'))+'</div>')+
+        (enabled?'<div class="pager-import-tool">'+
         (shortWaiting?'<div class="banner warn"><b>'+t('في طلب قصير كنت تراجعه.','יש הזמנה שממתינה לבדיקה.','You have a pending short confirmation.')+'</b> <a class="btn gold small" href="#pager/confirm/'+esc(shortWaiting)+'">'+t('الرجوع للطلب','חזרה להזמנה','Return to order')+'</a></div>':'')+
         '<h3>'+t('تأكيد طلب من واتساب','אישור הזמנה מ-WhatsApp','Approve WhatsApp order')+'</h3>'+
         '<p class="small muted">'+t('الأسرع: اضغط رابط «تأكيد الطلب» في رسالة واتساب مباشرة. وإذا الرابط ما فتح، اكتب الكود القصير الموجود بالرسالة هون.','הדרך הקלה: לחצו על קישור האישור ב-WhatsApp. אפשר גם להזין קוד.','Tap the confirmation link in WhatsApp. If needed, enter its short code here.')+'</p>'+
         '<input id="pager-short-code" maxlength="300" autocomplete="off" placeholder="AB12CD34EF56AB78" inputmode="text" dir="ltr" />'+
         '<button class="btn gold" type="button" data-pager-action="open-short">'+t('فتح الطلب ومراجعته','פתיחת ההזמנה','Review order')+'</button>'+
         (pending?'<details><summary>'+t('تأكيد طلب قديم بالرابط الطويل','אישור הזמנה ישנה','Legacy long-link confirmation')+'</summary><p class="small muted">'+t('للطلبات القديمة فقط','להזמנות ישנות בלבד','Old requests only')+'</p><a class="btn outline small" href="#pager/import/'+esc(pending.encoded)+'">'+t('فتح الطلب القديم','פתיחת הזמנה ישנה','Open old request')+'</a></details>':'')+
-        '</div>'+
+        '</div>':'')+
         '<p class="hint">'+t('تجريبي: الإشعار على صفحة المتابعة فقط، والتنبيه من المتصفح أثناء فتحها. ما بنرسل إشعارات خلفية حاليًا.','ניסוי: מעקב והתראות רק כשהדף פתוח.','Pilot: tracking page and foreground alerts only. No background push yet.')+'</p></section>'+
         '<div class="pager-summary"><div><strong>'+active.length+'</strong><span>'+t('طلبات نشطة','הזמנות פעילות','Active')+'</span></div><div><strong>'+orders.filter(x=>x.status==='ready').length+'</strong><span>'+t('جاهزة','מוכנות','Ready')+'</span></div><div><strong>'+orders.filter(x=>x.status==='collected').length+'</strong><span>'+t('تم التسليم','נמסרו','Collected')+'</span></div></div>'+
         '<section class="panel"><div class="flexbetween"><h2>'+t('الطلبات المقبولة','הזמנות שאושרו','Accepted orders')+'</h2><button class="btn outline small" data-pager-action="refresh">'+t('تحديث','רענון','Refresh')+'</button></div>'+
         (orders.length?'<div class="pager-orders">'+orders.map(card).join('')+'</div>':'<div class="empty">'+t('ما في طلبات مقبولة بعد. بعد استلام واتساب، افتح رابط التأكيد الموجود بالرسالة.','אין הזמנות מאושרות עדיין.','No accepted orders yet. Open the confirmation link from a received WhatsApp message.')+'</div>')+'</section><div class="pager-owner-feedback"></div>';
     }catch(e){panel.innerHTML='<div class="banner error">'+esc(msg(e))+'</div>';}
+  }
+  async function renderAdminSettings(panel,restaurants){
+    if(!panel||!Array.isArray(restaurants))return;
+    adminPanel=panel;adminRestaurants=restaurants;
+    panel.innerHTML='<section class="panel"><h2>📟 إدارة تفعيل Smart Pager</h2><p class="muted">جاري تحميل حالة المطاعم…</p></section>';
+    try{
+      const rows=val(await sb.from('pager_settings').select('restaurant_id,enabled'))||[];
+      const enabledById=new Map(rows.map(x=>[x.restaurant_id,!!x.enabled]));
+      const active=restaurants.filter(r=>enabledById.get(r.id)).length;
+      panel.innerHTML='<section class="panel" id="pager-admin-activation"><div class="flexbetween"><h2>📟 تفعيل Smart Pager للمطاعم</h2><span class="tag '+(active?'approved':'pending')+'">'+active+' / '+restaurants.length+' مفعّل</span></div>'+
+        '<p class="muted small">كل المطاعم تبدأ بدون Smart Pager. إنت وحدك بتقدر تفعّل أو توقف النظام من هون؛ أصحاب المطاعم ما عندهم زر تفعيل ولا صلاحية تغييره.</p>'+
+        '<div class="pager-admin-list">'+(restaurants.length?restaurants.map(r=>{
+          const enabled=!!enabledById.get(r.id),approved=r.status==='approved'&&r.is_published;
+          return '<div class="pager-admin-line"><div><strong>'+esc(r.name)+'</strong><p class="small muted">'+esc(r.slug||'')+'</p></div>'+
+            '<div class="actions"><span class="tag '+(enabled?'approved':'pending')+'">'+(enabled?'مفعّل':'متوقف')+'</span>'+
+            '<button class="btn '+(enabled?'outline':'gold')+' small" data-pager-action="admin-toggle" data-id="'+esc(r.id)+'" data-value="'+(enabled?'off':'on')+'" '+(!approved&&!enabled?'disabled':'')+'>'+(enabled?'إيقاف الخدمة':'تفعيل الخدمة')+'</button></div></div>';
+        }).join(''):'<div class="empty">لا توجد مطاعم حتى الآن.</div>')+'</div></section>';
+    }catch(err){panel.innerHTML='<div class="banner error">تعذر تحميل إعدادات Smart Pager: '+esc(msg(err))+'</div>';}
+  }
+  async function adminToggle(button){
+    if(!adminPanel||!Array.isArray(adminRestaurants)||!adminRestaurants.length)return;
+    const restaurant=adminRestaurants.find(r=>r.id===button.dataset.id);
+    if(!restaurant)throw Error('Restaurant missing');
+    const enable=button.dataset.value==='on';
+    if(enable&&(restaurant.status!=='approved'||!restaurant.is_published))throw Error('Restaurant must be approved and published before activation');
+    if(!confirm((enable?'تفعيل':'إيقاف')+' Smart Pager لمطعم '+restaurant.name+'؟'))return;
+    button.disabled=true;
+    try{
+      val(await sb.from('pager_settings').upsert({restaurant_id:restaurant.id,enabled:enable},{onConflict:'restaurant_id'}).select('restaurant_id').single());
+      await renderAdminSettings(adminPanel,adminRestaurants);
+    }catch(err){button.disabled=false;alert(msg(err));}
   }
   async function ownerAction(button){
     const act=button.dataset.pagerAction;
@@ -351,6 +382,7 @@
     button.disabled=true;
     try{
       if(act==='save-settings'){
+        if(!ownerIsAdmin)throw Error(t('فقط إدارة TAFRIVO يمكنها التفعيل.','רק הנהלת TAFRIVO רשאית להפעיל.','Only TAFRIVO administration can change this.'));
         const enabled=!!ownerPanel.querySelector('#pager-enabled')?.checked;
         val(await sb.from('pager_settings').upsert({restaurant_id:ownerRestaurant.id,enabled},{onConflict:'restaurant_id'}).select('restaurant_id').single());
       }else if(act==='status'){
@@ -381,6 +413,7 @@
     const b=event.target.closest('[data-pager-action]');if(!b)return;
     event.preventDefault();
     if(b.dataset.pagerAction==='accept')accept(b.dataset.envelope,b).catch(err=>alert(msg(err)));
+    else if(b.dataset.pagerAction==='admin-toggle')adminToggle(b).catch(err=>alert(msg(err)));
     else if(b.dataset.pagerAction==='accept-short')acceptShort(b.dataset.code,b).catch(err=>alert(msg(err)));
     else if(b.dataset.pagerAction==='open-short'){
       try{location.hash='#pager/confirm/'+readConfirmCode(ownerPanel?.querySelector('#pager-short-code')?.value||'');}
@@ -403,5 +436,5 @@
       ownerAction(b).catch(err=>alert(msg(err)));
   });
   window.addEventListener('hashchange',()=>{if(!location.hash.startsWith('#pager/track/'))stop();});
-  window.TAFRIVO_PAGER={prepareCheckout,prepareQuickCheckout,lastTracking,showTrackingLink,showTracking,showImport,showConfirm,renderOwner,resumeAfterLogin,extractImportHash,readConfirmCode};
+  window.TAFRIVO_PAGER={prepareCheckout,prepareQuickCheckout,lastTracking,showTrackingLink,showTracking,showImport,showConfirm,renderOwner,renderAdminSettings,resumeAfterLogin,extractImportHash,readConfirmCode};
 })();
