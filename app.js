@@ -70,6 +70,9 @@
       else root.innerHTML='<div class="banner error">رابط متابعة غير صالح</div>';
       return;
     }
+    if(hash.startsWith('pager/confirm/')){
+      loading();await window.TAFRIVO_PAGER?.showConfirm(hash.slice('pager/confirm/'.length));return;
+    }
     if(hash.startsWith('pager/import/')){
       loading();await window.TAFRIVO_PAGER?.showImport(hash.slice('pager/import/'.length));return;
     }
@@ -640,20 +643,27 @@ function renderAdminLeads(){
         catch{prompt('انسخ الطلب:',msg);}
         return;
       }
+      // Reserve a browser tab on the click before waiting for the database request.
+      const pagerActive=!!(state.menu?.pagerEnabled&&window.TAFRIVO_PAGER);
+      const popup=pagerActive?window.open('about:blank','_blank'):null;
+      if(popup){try{popup.document.body.textContent=textLang('جاري تجهيز واتساب…','מכין WhatsApp…','Preparing WhatsApp…');}catch{}}
       let pagerDetails=null;
-      if(state.menu?.pagerEnabled&&window.TAFRIVO_PAGER){
+      if(pagerActive){
         try{
-          pagerDetails=window.TAFRIVO_PAGER.prepareCheckout({
+          pagerDetails=await window.TAFRIVO_PAGER.prepareQuickCheckout({
             restaurant:state.menu.restaurant,
             entries,kind:state.orderKind,table,note,lang:state.lang
           });
           msg+=pagerDetails.suffix;
         }catch(err){
           console.warn('Smart Pager preparation unavailable:',err?.message||err);
-          alert(textLang('رابط Smart Pager مش متاح لهذا الطلب. رح نفتح واتساب بالطريقة العادية.','המעקב לא זמין להזמנה זו; WhatsApp ייפתח כרגיל.','Tracking unavailable for this order; opening WhatsApp normally.'));
+          alert(textLang('تعذّر إنشاء رابط التأكيد. رح نفتح واتساب عادي، بدون متابعة لهذا الطلب.','לא ניתן ליצור קישור אישור. WhatsApp ייפתח בלי מעקב.','Could not prepare the confirmation link. WhatsApp will open without tracking.'));
         }
       }
-      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`,'_blank','noopener,noreferrer');
+      const waTarget='https://wa.me/'+phone+'?text='+encodeURIComponent(msg);
+      if(popup&&!popup.closed){try{popup.location.replace(waTarget);}catch{popup.location.href=waTarget;}}
+      else if(pagerActive)window.location.href=waTarget;
+      else window.open(waTarget,'_blank','noopener,noreferrer');
       if(pagerDetails)window.TAFRIVO_PAGER.showTrackingLink(document.getElementById('pager-track-area'),pagerDetails);
       return;
     }
