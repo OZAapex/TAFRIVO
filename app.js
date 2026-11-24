@@ -8,7 +8,7 @@
     return;
   }
   const sb = window.supabase.createClient(window.TAFRIVO_CONFIG.SUPABASE_URL, window.TAFRIVO_CONFIG.SUPABASE_PUBLISHABLE_KEY);
-  const state = { user:null, recoveryReady:false, role:'owner', restaurant:null, restaurants:[], applications:[], categories:[], items:[], tab:'items', lang:(()=>{try{const v=localStorage.getItem('tafrivo-lang');return ['ar','he','en'].includes(v)?v:'ar';}catch{return 'ar';}})(), cart:{}, breadChoiceItem:null, orderKind:'', orderTable:'', orderNote:'', notice:null, itemEdit:null, menu:null, billingSubscriptions:[], billingPlans:[], billingPayments:[], contactMessages:[], registrationOpen:false, catEdit:null, marketingSubscribers:[], marketingCampaigns:[], restaurantLeads:[], leadsPage:0, leadsCount:0, leadsPageSize:60, newLeadsCount:0, leadsFilter:'all', leadsSearch:'' };
+  const state = { user:null, recoveryReady:false, role:'owner', restaurant:null, restaurants:[], applications:[], categories:[], items:[], tab:'items', lang:(()=>{try{const v=localStorage.getItem('tafrivo-lang');return ['ar','he','en'].includes(v)?v:'ar';}catch{return 'ar';}})(), cart:{}, breadChoiceItem:null, orderKind:'', orderTable:'', orderNote:'', readyConsent:false, readyPhone:'', notice:null, itemEdit:null, menu:null, billingSubscriptions:[], billingPlans:[], billingPayments:[], contactMessages:[], registrationOpen:false, catEdit:null, marketingSubscribers:[], marketingCampaigns:[], restaurantLeads:[], leadsPage:0, leadsCount:0, leadsPageSize:60, newLeadsCount:0, leadsFilter:'all', leadsSearch:'' };
   const e = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const url = v => /^https:\/\//i.test(v || '') ? e(v) : '';
   const money = v => `${Number(v || 0).toLocaleString('he-IL',{minimumFractionDigits:0,maximumFractionDigits:2})} ₪`;
@@ -361,7 +361,7 @@ function renderAdminLeads(){
     if(!d)return;
     const entries=cartLines(),total=entries.reduce((s,x)=>s+Number(x.item.price_ils)*x.q,0);
     const onTable=state.orderKind==='table';
-    root.innerHTML=`${nav(`<button class="btn outline" data-act="backtomenu">${textLang('رجوع للمنيو','חזרה לתפריט','Back to menu')}</button>`)}<main class="wrap section" style="max-width:760px"><section class="panel"><h2>${textLang('مراجعة الطلب','סיכום הזמנה','Order summary')}</h2>${entries.length?entries.map(x=>`<div class="listcard"><div><h3>${e(foodLang(x.item,'name'))}${x.option?' — '+e(breadLabel(x.option)):''}</h3><p>${money(x.item.price_ils)} × ${x.q}</p></div><div class="actions"><button class="btn outline small" data-act="cartminus" data-key="${e(x.key)}">−</button><b>${x.q}</b><button class="btn outline small" data-act="cartplus" data-key="${e(x.key)}">+</button></div></div>`).join(''):'<div class="empty">السلة فارغة</div>'}<h2 style="margin-top:20px">${textLang('المجموع','סה״כ','Total')}: ${money(total)}</h2><div class="order-method"><h3>${textLang('وين بدك تاكل؟','איפה תאכלו?','Order type')} <span aria-hidden="true">*</span></h3><div class="order-type-options"><label class="order-option"><input type="radio" name="order_kind" value="table" ${onTable?'checked':''}><span>🍽️ ${textLang('على الطاولة','ישיבה במסעדה','Dine in')}</span></label><label class="order-option"><input type="radio" name="order_kind" value="takeaway" ${state.orderKind==='takeaway'?'checked':''}><span>🥡 ${textLang('تيك أواي – استلام من المطعم','טייק אוויי – איסוף עצמי','Takeaway – pickup')}</span></label></div></div>${onTable?`<div class="field"><label for="order-table">${textLang('رقم الطاولة *','מספר שולחן *','Table number *')}</label><input id="order-table" maxlength="32" required placeholder="${textLang('مثلاً 4','לדוגמה 4','e.g. 4')}" value="${e(state.orderTable)}"></div>`:''}<div class="field"><label for="cart-note">${textLang('ملاحظات على الطلب (اختياري)','הערות להזמנה (לא חובה)','Order notes (optional)')}</label><input id="cart-note" maxlength="240" value="${e(state.orderNote)}" placeholder="${textLang('مثلاً بدون بصل','למשל בלי בצל','e.g. no onions')}"></div><button ${entries.length?'':'disabled'} data-act="sendorder" class="btn gold block">${textLang('إرسال الطلب عبر واتساب','שלח הזמנה בוואטסאפ','Send via WhatsApp')}</button>${d.pagerEnabled?'<div id="pager-track-area"></div>':''}<p class="hint" style="margin-top:13px">${textLang('بعد الضغط، افتح واتساب واضغط إرسال حتى يوصل الطلب للمطعم.','אחרי פתיחת וואטסאפ יש ללחוץ שליחה כדי שהמסעדה תקבל את ההזמנה.','After WhatsApp opens, press Send to deliver the message to the restaurant.')}</p></section></main>${footer()}`;
+    root.innerHTML=`${nav(`<button class="btn outline" data-act="backtomenu">${textLang('رجوع للمنيو','חזרה לתפריט','Back to menu')}</button>`)}<main class="wrap section" style="max-width:760px"><section class="panel"><h2>${textLang('مراجعة الطلب','סיכום הזמנה','Order summary')}</h2>${entries.length?entries.map(x=>`<div class="listcard"><div><h3>${e(foodLang(x.item,'name'))}${x.option?' — '+e(breadLabel(x.option)):''}</h3><p>${money(x.item.price_ils)} × ${x.q}</p></div><div class="actions"><button class="btn outline small" data-act="cartminus" data-key="${e(x.key)}">−</button><b>${x.q}</b><button class="btn outline small" data-act="cartplus" data-key="${e(x.key)}">+</button></div></div>`).join(''):'<div class="empty">السلة فارغة</div>'}<h2 style="margin-top:20px">${textLang('المجموع','סה״כ','Total')}: ${money(total)}</h2><div class="order-method"><h3>${textLang('وين بدك تاكل؟','איפה תאכלו?','Order type')} <span aria-hidden="true">*</span></h3><div class="order-type-options"><label class="order-option"><input type="radio" name="order_kind" value="table" ${onTable?'checked':''}><span>🍽️ ${textLang('على الطاولة','ישיבה במסעדה','Dine in')}</span></label><label class="order-option"><input type="radio" name="order_kind" value="takeaway" ${state.orderKind==='takeaway'?'checked':''}><span>🥡 ${textLang('تيك أواي – استلام من المطعم','טייק אוויי – איסוף עצמי','Takeaway – pickup')}</span></label></div></div>${onTable?`<div class="field"><label for="order-table">${textLang('رقم الطاولة *','מספר שולחן *','Table number *')}</label><input id="order-table" maxlength="32" required placeholder="${textLang('مثلاً 4','לדוגמה 4','e.g. 4')}" value="${e(state.orderTable)}"></div>`:''}<div class="field"><label for="cart-note">${textLang('ملاحظات على الطلب (اختياري)','הערות להזמנה (לא חובה)','Order notes (optional)')}</label><input id="cart-note" maxlength="240" value="${e(state.orderNote)}" placeholder="${textLang('مثلاً بدون بصل','למשל בלי בצל','e.g. no onions')}"></div>${d.pagerEnabled?`<div class="pager-ready-optin"><label class="pager-ready-consent"><input type="checkbox" id="pager-ready-consent" ${state.readyConsent?'checked':''}> ${textLang('📲 ابعثولي رسالة واتساب لما طلبي يصير جاهز (اختياري)','📲 שלחו לי WhatsApp כשההזמנה מוכנה (לא חובה)','📲 WhatsApp me when my order is ready (optional)')}</label>${state.readyConsent?`<div class="field"><label for="pager-ready-phone">${textLang('رقم واتساب لتبليغ الجهوزية','מספר WhatsApp לקבלת הודעת מוכנות','WhatsApp number for ready notification')}</label><input id="pager-ready-phone" type="tel" autocomplete="tel" inputmode="tel" maxlength="22" placeholder="05xxxxxxxx" value="${e(state.readyPhone)}"><p class="hint">${textLang('المطعم بيستخدم الرقم لهالطلب فقط. لما الطلب يجهز بيفتح واتساب برسالة جاهزة وصاحب المطعم بضغط إرسال.','המסעדה תשתמש במספר לעדכון הזמנה זו בלבד. שליחת ההודעה מתבצעת ידנית ב-WhatsApp.','Only for this order. Staff sends a prepared message manually in WhatsApp when ready.')}</p></div>`:''}</div>`:''}<button ${entries.length?'':'disabled'} data-act="sendorder" class="btn gold block">${textLang('إرسال الطلب عبر واتساب','שלח הזמנה בוואטסאפ','Send via WhatsApp')}</button>${d.pagerEnabled?'<div id="pager-track-area"></div>':''}<p class="hint" style="margin-top:13px">${textLang('بعد الضغط، افتح واتساب واضغط إرسال حتى يوصل الطلب للمطعم.','אחרי פתיחת וואטסאפ יש ללחוץ שליחה כדי שהמסעדה תקבל את ההזמנה.','After WhatsApp opens, press Send to deliver the message to the restaurant.')}</p></section></main>${footer()}`;
   }
   function safePhone(v){let p=String(v||'').replace(/[^\d]/g,'');if(p.startsWith('00'))p=p.slice(2);if(p.startsWith('0'))p='972'+p.slice(1);return p;}
   async function uploadRestaurantImage(file){
@@ -647,13 +647,23 @@ function renderAdminLeads(){
       const pagerActive=!!(state.menu?.pagerEnabled&&window.TAFRIVO_PAGER);
       const popup=pagerActive?window.open('about:blank','_blank'):null;
       if(popup){try{popup.document.body.textContent=textLang('جاري تجهيز واتساب…','מכין WhatsApp…','Preparing WhatsApp…');}catch{}}
+      let readyWhatsApp='';
+      if(pagerActive&&state.readyConsent){
+        readyWhatsApp=safePhone(state.readyPhone);
+        if(!/^[1-9][0-9]{9,14}$/.test(readyWhatsApp)){
+          if(popup&&!popup.closed)popup.close();
+          alert(textLang('اكتب رقم واتساب صحيح حتى نقدر نبلغك لما الطلب يجهز.','יש להזין מספר WhatsApp תקין.','Enter a valid WhatsApp number for the ready message.'));
+          document.getElementById('pager-ready-phone')?.focus();return;
+        }
+      }
       let pagerDetails=null;
       if(pagerActive){
         try{
           pagerDetails=await window.TAFRIVO_PAGER.prepareQuickCheckout({
             restaurant:state.menu.restaurant,
-            entries,kind:state.orderKind,table,note,lang:state.lang
+            entries,kind:state.orderKind,table,note,lang:state.lang,readyWhatsApp,readyConsent:state.readyConsent
           });
+          if(readyWhatsApp)msg+='\nرقم واتساب لإبلاغ الجهوزية: +'+readyWhatsApp+' (بموافقة الزبون)';
           msg+=pagerDetails.suffix;
         }catch(err){
           console.warn('Smart Pager preparation unavailable:',err?.message||err);
@@ -672,10 +682,12 @@ function renderAdminLeads(){
     const t=ev.target;
     if(t.id==='cart-note')state.orderNote=t.value.slice(0,240);
     if(t.id==='order-table')state.orderTable=t.value.slice(0,32);
+    if(t.id==='pager-ready-phone')state.readyPhone=t.value.slice(0,22);
   });
   root.addEventListener('change',ev=>{
     const t=ev.target;
     if(t.name==='order_kind'&&['table','takeaway'].includes(t.value)){state.orderKind=t.value;renderCart();}
+    if(t.id==='pager-ready-consent'){state.readyConsent=!!t.checked; if(!state.readyConsent)state.readyPhone='';renderCart();}
   });
   root.addEventListener('submit',ev=>{const form=ev.target.closest('form[data-form]');if(form){ev.preventDefault();submitForm(form);}});
   document.addEventListener('click',ev=>{const el=ev.target.closest('[data-act]');if(!el)return;ev.preventDefault();handleClick(el);});
