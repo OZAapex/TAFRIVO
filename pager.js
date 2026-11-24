@@ -15,7 +15,7 @@
   const msg=e=>e?.message||String(e||'حدث خطأ');
   const heading=title=>'<div class="pager-page"><header class="pager-header"><a href="#" class="pager-brand">✦ TAFRIVO</a><span>SMART PAGER</span></header><main class="pager-container">'+title+'</main><footer class="pager-footer">Powered by OZA APEX</footer></div>';
   const dateFmt=x=>new Date(x).toLocaleString('ar-IL',{hour:'2-digit',minute:'2-digit',month:'short',day:'numeric'});
-  let poll=null,lastStatus=null,ownerRestaurant=null,ownerPanel=null;
+  let poll=null,lastStatus=null,ownerRestaurant=null,ownerPanel=null,ownerOrders=[];
   function stop(){if(poll)clearInterval(poll);poll=null;lastStatus=null;}
   const pendingKey='tafrivo-pager-pending-import';
   function pendingImport(restaurantId){
@@ -84,12 +84,13 @@
     return JSON.parse(new TextDecoder().decode(Uint8Array.from(binary,ch=>ch.charCodeAt(0))));
   };
   const randomHex=()=>Array.from(crypto.getRandomValues(new Uint8Array(32))).map(x=>x.toString(16).padStart(2,'0')).join('');
-  function prepareCheckout({restaurant,entries,kind,table,note,lang}){
+  function prepareCheckout({restaurant,entries,kind,table,note,lang,readyWhatsApp='',readyConsent=false}){
     if(!restaurant?.id||!['table','takeaway'].includes(kind)||!Array.isArray(entries)||!entries.length||entries.length>12)
       throw Error(t('تعذّر تحضير رابط المتابعة','לא ניתן להכין קישור מעקב','Cannot prepare tracking link'));
     const lines=entries.map(x=>({id:x.item.id,qty:x.q,option:x.option||''}));
     const payload={restaurant_id:restaurant.id,client_ref:crypto.randomUUID(),issued_at:Date.now(),kind,table:kind==='table'?table:'',note,lang:lang||'ar',lines};
-    const fingerprint=JSON.stringify({id:restaurant.id,lines,kind,table,note,lang});
+    if(readyConsent){payload.ready_whatsapp_consent=true;payload.ready_whatsapp=readyWhatsApp;}
+    const fingerprint=JSON.stringify({id:restaurant.id,lines,kind,table,note,lang,readyWhatsApp,readyConsent});
     const key='tafrivo-pager-checkout';
     let saved=null;try{saved=JSON.parse(sessionStorage.getItem(key)||'null');}catch{}
     if(saved?.fingerprint===fingerprint&&Date.now()-saved.ts<9*60*1000&&saved.envelope?.token)
@@ -271,6 +272,31 @@
       button.remove();
     }catch(e){button.disabled=false;alert(msg(e));}
   }
+  function readyMessage(order){
+    const code=short(order.client_ref),name=ownerRestaurant?.name||'TAFRIVO',atTable=order.order_type==='table';
+    if(order.language==='he')return '🍔 '+name+'\n\n✅ ההזמנה שלך מספר #'+code+
+      (atTable?' מוכנה ותוגש לשולחן '+(order.table_no||'')+'!':' מוכנה לאיסוף!')+
+      '\nתודה שהזמנת אצלנו 💚\n\nPowered by TAFRIVO';
+    if(order.language==='en')return '🍔 '+name+'\n\n✅ Order #'+code+
+      (atTable?' is ready and will be served at table '+(order.table_no||'')+'!':' is ready for pickup!')+
+      '\nThanks for ordering 💚\n\nPowered by TAFRIVO';
+    return '🍔 '+name+'\n\n✅ طلبك رقم #'+code+
+      (atTable?' جاهز ورح يوصلك على الطاولة '+(order.table_no||'')+'!':' صار جاهز للاستلام!')+
+      '\nشكرًا لطلبك من '+name+' 💚\n\nPowered by TAFRIVO';
+  }
+  function customerWhatsAppLink(order){
+    return 'https://wa.me/'+order.ready_whatsapp+'?text='+encodeURIComponent(readyMessage(order));
+  }
+  async function notifyCustomerReady(order){
+    if(order.ready_whatsapp_consent&&/^[1-9][0-9]{9,14}$/.test(order.ready_whatsapp||'')){
+      const target=customerWhatsAppLink(order);
+      window.open(target,'_blank','noopener,noreferrer');
+    }else{
+      const text=readyMessage(order);
+      try{await navigator.clipboard.writeText(text);alert(t('نسخنا رسالة الجهوزية. الصقها في محادثة الزبون اللي بعث الطلب على واتساب.','ההודעה הועתקה. הדביקו אותה בשיחת הלקוח ב-WhatsApp.','Ready message copied. Paste it into the WhatsApp conversation from this customer.'));}
+      catch{prompt(t('انسخ رد الجهوزية لمحادثة الزبون','העתקת הודעת המוכנות','Copy ready reply into the customer chat'),text);}
+    }
+  }
   async function renderOwner(panel,restaurant){
     if(!panel||!restaurant)return;
     ownerPanel=panel;ownerRestaurant=restaurant;
@@ -278,15 +304,17 @@
     try{
       const [s,o]=await Promise.all([
         sb.from('pager_settings').select('enabled').eq('restaurant_id',restaurant.id).maybeSingle(),
-        sb.from('pager_orders').select('id,client_ref,status,order_type,table_no,note,subtotal_ils,created_at,updated_at,pager_order_items(name,bread_option,quantity,unit_price_ils)')
+        sb.from('pager_orders').select('id,client_ref,status,order_type,table_no,note,language,ready_whatsapp_consent,ready_whatsapp,subtotal_ils,created_at,updated_at,pager_order_items(name,bread_option,quantity,unit_price_ils)')
         .eq('restaurant_id',restaurant.id).order('created_at',{ascending:false}).limit(75)
       ]);
       const enabled=!!val(s)?.enabled,orders=val(o)||[];
+      ownerOrders=orders;
       const active=orders.filter(x=>['accepted','preparing','ready'].includes(x.status));
       const statusLabels={accepted:t('مقبول','אושר','Accepted'),preparing:t('قيد التحضير','בהכנה','Preparing'),ready:t('جاهز','מוכן','Ready'),collected:t('تم التسليم','נמסר','Collected'),cancelled:t('ملغي','בוטל','Cancelled')};
       const buttons=x=>{
         const choices={accepted:[['preparing',t('بدء التحضير','התחל הכנה','Start preparing')],['cancelled',t('إلغاء','ביטול','Cancel')]],preparing:[['ready',t('الطلب جاهز','ההזמנה מוכנה','Ready')],['cancelled',t('إلغاء','ביטול','Cancel')]],ready:[['collected',t('تم التسليم','נמסר','Collected')],['cancelled',t('إلغاء','ביטול','Cancel')]]};
-        return (choices[x.status]||[]).map(([next,label])=>'<button class="btn '+(next==='cancelled'?'outline':'gold')+' small" data-pager-action="status" data-id="'+esc(x.id)+'" data-next="'+esc(next)+'">'+esc(label)+'</button>').join('');
+        return (choices[x.status]||[]).map(([next,label])=>'<button class="btn '+(next==='cancelled'?'outline':'gold')+' small" data-pager-action="status" data-id="'+esc(x.id)+'" data-next="'+esc(next)+'">'+esc(next==='ready'&&x.ready_whatsapp_consent?t('جاهز + إبلاغ واتساب','מוכן + WhatsApp','Ready + WhatsApp'):label)+'</button>').join('')+
+          (x.status==='ready'?'<button class="btn outline small" data-pager-action="ready-message" data-id="'+esc(x.id)+'">'+(x.ready_whatsapp_consent?t('📲 افتح رسالة الزبون','📲 שלחו WhatsApp','📲 Open WhatsApp'):t('📋 نسخ رسالة الجهوزية','📋 העתקת הודעה','📋 Copy ready message'))+'</button>':'');
       };
       const card=x=>'<article class="pager-order"><div class="pager-order-title"><strong>#'+esc(short(x.client_ref))+'</strong><span class="pager-status '+esc(x.status)+'">'+esc(statusLabels[x.status]||x.status)+'</span></div><p class="small muted">'+esc(dateFmt(x.created_at))+' · '+(x.order_type==='table'?t('طاولة ','שולחן ','Table ')+esc(x.table_no):t('تيك أواي','איסוף עצמי','Takeaway'))+'</p>'+
         '<p>'+((x.pager_order_items||[]).map(i=>esc(i.quantity)+'× '+esc(i.name)+(i.bread_option?' ('+esc(i.bread_option==='wrap'?'لفة':'بجيت')+')':'')).join(' · '))+'</p><div class="pager-order-title"><b>'+price(x.subtotal_ils)+'</b><div class="actions">'+buttons(x)+'</div></div></article>';
@@ -310,6 +338,16 @@
   async function ownerAction(button){
     const act=button.dataset.pagerAction;
     if(!ownerPanel||!ownerRestaurant)return;
+    const order=ownerOrders.find(x=>x.id===button.dataset.id);
+    if(act==='ready-message'){
+      if(!order||order.status!=='ready')return;
+      await notifyCustomerReady(order);
+      return;
+    }
+    // Reserve the Safari popup synchronously on the staff click so it can open WhatsApp after the status RPC.
+    const toReady=act==='status'&&button.dataset.next==='ready';
+    const contact=toReady&&order?.ready_whatsapp_consent&&/^[1-9][0-9]{9,14}$/.test(order.ready_whatsapp||'');
+    const popup=contact?window.open('about:blank','_blank'):null;
     button.disabled=true;
     try{
       if(act==='save-settings'){
@@ -319,9 +357,25 @@
         const next=button.dataset.next;
         if(next==='cancelled'&&!confirm(t('إلغاء هذا الطلب؟','לבטל את ההזמנה?','Cancel this order?'))){button.disabled=false;return;}
         val(await sb.rpc('pager_set_status',{p_order_id:button.dataset.id,p_new_status:next}));
+        if(toReady&&order){
+          if(contact){
+            const url=customerWhatsAppLink(order);
+            if(popup&&!popup.closed){try{popup.location.replace(url)}catch{popup.location.href=url}}
+            else alert(t('الطلب جاهز. اضغط زر «افتح رسالة الزبون» لإرسال واتساب.','ההזמנה מוכנה. לחצו על כפתור WhatsApp.','Order is ready. Use Open WhatsApp to send the prepared message.'));
+          }else{
+            // No phone consent. The restaurant can reply in the existing WhatsApp chat manually.
+            try{await navigator.clipboard.writeText(readyMessage(order));}
+            catch{}
+          }
+        }
       }
       await renderOwner(ownerPanel,ownerRestaurant);
-    }catch(e){button.disabled=false;alert(msg(e));}
+      if(toReady&&!contact)alert(t('تم تحديث الطلب إلى جاهز. رسالة الجهوزية موجودة بزر «نسخ رسالة الجهوزية» للرد على الزبون بنفس محادثة واتساب.','ההזמנה מוכנה. ניתן להעתיק הודעה לשיחת WhatsApp של הלקוח.','Order marked ready. Copy the ready message into the existing customer WhatsApp chat.'));
+    }catch(e){
+      button.disabled=false;
+      if(popup&&!popup.closed)popup.close();
+      alert(msg(e));
+    }
   }
   document.addEventListener('click',event=>{
     const b=event.target.closest('[data-pager-action]');if(!b)return;
@@ -345,7 +399,7 @@
       if(typeof Notification==='undefined')alert(t('إشعارات المتصفح غير متاحة','התראות לא זמינות','Notifications unavailable'));
       else Notification.requestPermission().then(v=>alert(v==='granted'?t('تم تفعيل إشعارات الصفحة المفتوحة','התראות הופעלו לדף פתוח','Foreground alerts enabled'):t('الإذن غير متاح','אין הרשאה','Permission not granted')));
     }
-    else if(b.dataset.pagerAction==='refresh'||b.dataset.pagerAction==='status'||b.dataset.pagerAction==='save-settings')
+    else if(b.dataset.pagerAction==='refresh'||b.dataset.pagerAction==='status'||b.dataset.pagerAction==='save-settings'||b.dataset.pagerAction==='ready-message')
       ownerAction(b).catch(err=>alert(msg(err)));
   });
   window.addEventListener('hashchange',()=>{if(!location.hash.startsWith('#pager/track/'))stop();});
