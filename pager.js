@@ -42,6 +42,13 @@
     try{sessionStorage.setItem(key,JSON.stringify({fingerprint,ts:Date.now(),envelope}));}catch{}
     return build(envelope);
   }
+  function lastTracking(restaurantId){
+    try{
+      const saved=JSON.parse(sessionStorage.getItem('tafrivo-pager-checkout')||'null');
+      if(!saved?.envelope?.payload||saved.envelope.payload.restaurant_id!==restaurantId||Date.now()-saved.ts>24*60*60*1000)return null;
+      return build(saved.envelope);
+    }catch{return null;}
+  }
   function build(envelope){
     const {payload,token}=envelope;
     const staff=link('pager/import/'+utf8B64(JSON.stringify(envelope)));
@@ -192,5 +199,5 @@
       ownerAction(b).catch(err=>alert(msg(err)));
   });
   window.addEventListener('hashchange',()=>{if(!location.hash.startsWith('#pager/track/'))stop();});
-  window.TAFRIVO_PAGER={prepareCheckout,showTrackingLink,showTracking,showImport,renderOwner};
+  window.TAFRIVO_PAGER={prepareCheckout,lastTracking,showTrackingLink,showTracking,showImport,renderOwner};
 })();
