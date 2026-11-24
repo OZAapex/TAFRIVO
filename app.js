@@ -76,7 +76,7 @@
     if(hash.startsWith('menu/')){loading(); await openMenu(hash.slice(5));return;}
     if(hash.startsWith('error=')||(hash==='reset-password'&&!state.recoveryReady)){clearNotice();invalidRecoveryPage();return;}
     if(hash==='forgot-password'||hash==='reset-password'){clearNotice();recoveryPage(hash);return;}
-    if(hash==='login'||hash==='signup'){clearNotice();if(hash==='login'&&state.user){go('#app');return;}if(hash==='signup'&&!state.registrationOpen)closedSignupPage();else authPage(hash);return;}
+    if(hash==='login'||hash==='signup'){clearNotice();if(hash==='login'&&state.user){go(window.TAFRIVO_PAGER?.resumeAfterLogin?.()||'#app');return;}if(hash==='signup'&&!state.registrationOpen)closedSignupPage();else authPage(hash);return;}
     if(hash.startsWith('manage/')){
       loading();
       try{
@@ -406,7 +406,7 @@ function renderAdminLeads(){
        if(target)target.innerHTML='<div class="banner">✅ '+e(textLang('تم تسجيل الطلب. لتأكيده اضغط الزر وأرسل الرسالة من نفس رقمك على واتساب المطعم.','בקשת ההרשמה נקלטה. שלחו הודעת אישור ממספרכם בוואטסאפ של המסעדה.','Request saved. Confirm by sending a message from your own number to the restaurant on WhatsApp.'))+'</div><a class="btn gold" href="'+e(link)+'" target="_blank" rel="noopener noreferrer" style="margin:8px 0">'+e(textLang('فتح واتساب لتأكيد الاشتراك','פתיחת וואטסאפ לאישור','Open WhatsApp to confirm'))+'</a>';
        form.reset();return;
      }
-    if(type==='login'){need(await sb.auth.signInWithPassword({email:g('email'),password:g('password')}));clearNotice();go('#app');return;}
+    if(type==='login'){need(await sb.auth.signInWithPassword({email:g('email'),password:g('password')}));clearNotice();go(window.TAFRIVO_PAGER?.resumeAfterLogin?.()||'#app');return;}
     if(type==='forgot-password'){need(await sb.auth.resetPasswordForEmail(g('email'),{redirectTo:location.origin+location.pathname}));flash('إذا البريد مسجّل، رح يصلك رابط الاستعادة على الإيميل.');return;}
     if(type==='reset-password'){if(!state.recoveryReady)throw Error('افتح رابط الاستعادة الجديد من إيميلك أولًا.');if(g('password').length<12)throw Error('كلمة المرور الجديدة لازم تكون 12 حرفًا أو أكثر.');need(await sb.auth.updateUser({password:g('password')}));state.recoveryReady=false;await sb.auth.signOut();alert('تم تغيير كلمة المرور. سجّل دخولك بكلمة المرور الجديدة.');go('#login');return;}
     if(type==='signup'){

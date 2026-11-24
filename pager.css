@@ -45,3 +45,9 @@
 .pager-status.cancelled{background:#ffe9e4;color:#9d403b}
 .pager-status.collected{background:#dcefe9;color:#236b5d}
 @media(max-width:560px){.pager-container{padding:16px 13px 55px}.pager-phone{padding:20px 16px;border-radius:24px}.pager-card{padding:19px 15px}.pager-summary{gap:7px}.pager-summary>div{padding:13px 9px}.pager-summary strong{font-size:22px}.pager-order-title .actions{width:100%}.pager-order-title .actions button{flex:1}}
+
+.pager-import-tool{margin:22px 0 0;padding:18px;border:1px solid #bbd5c0;border-radius:15px;background:#f8fbf8;display:grid;gap:11px}
+.pager-import-tool h3{font-size:19px;margin:0;color:#143c2e}
+.pager-import-tool .banner{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.pager-import-tool textarea{display:block;width:100%;min-height:75px;max-width:100%;padding:12px;border-radius:11px;border:1px solid #b3c7b9;direction:ltr;text-align:left;font:500 13px system-ui,sans-serif;background:#fff;color:#153b2a;resize:vertical}
+.pager-import-tool>button{justify-self:start}

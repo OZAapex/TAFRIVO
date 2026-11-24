@@ -17,6 +17,46 @@
   const dateFmt=x=>new Date(x).toLocaleString('ar-IL',{hour:'2-digit',minute:'2-digit',month:'short',day:'numeric'});
   let poll=null,lastStatus=null,ownerRestaurant=null,ownerPanel=null;
   function stop(){if(poll)clearInterval(poll);poll=null;lastStatus=null;}
+  const pendingKey='tafrivo-pager-pending-import';
+  function pendingImport(restaurantId){
+    let saved=null;try{saved=JSON.parse(sessionStorage.getItem(pendingKey)||'null');}catch{}
+    if(!saved?.encoded||!saved.restaurant_id||!Number.isFinite(saved.issued_at))return null;
+    const elapsed=Date.now()-saved.issued_at;
+    if(elapsed< -60000||elapsed>=600000){try{sessionStorage.removeItem(pendingKey)}catch{}return null;}
+    return restaurantId&&saved.restaurant_id!==restaurantId?null:saved;
+  }
+  function rememberImport(encoded){
+    try{
+      const value=decodeB64(encoded),payload=value?.payload;
+      if(!payload?.restaurant_id||!/^[0-9a-f]{64}$/.test(value.token))return;
+      const issued_at=Number(payload.issued_at);
+      if(!Number.isFinite(issued_at)||issued_at>Date.now()+60000||Date.now()-issued_at>=600000)return;
+      sessionStorage.setItem(pendingKey,JSON.stringify({encoded,restaurant_id:payload.restaurant_id,issued_at}));
+    }catch{}
+  }
+  function clearImport(encoded){
+    try{if(pendingImport()?.encoded===encoded)sessionStorage.removeItem(pendingKey);}catch{}
+  }
+  function resumeAfterLogin(){
+    const p=pendingImport();return p?'#pager/import/'+p.encoded:null;
+  }
+  function extractImportHash(value){
+    const raw=String(value||'').trim();
+    if(raw.length>10000)throw Error(t('الرابط طويل جدًا','הקישור ארוך מדי','Link too long'));
+    const links=raw.match(/https?:\/\/[^\s<>"']+/g)||[];
+    const fragments=links.length?[]:(raw.match(/#pager\/import\/[A-Za-z0-9_-]+/g)||[]);
+    const options=[raw,...links,...fragments];
+    for(const option of options){
+      try{
+        const u=new URL(option,location.origin+location.pathname);
+        if(u.origin!==location.origin||u.pathname.replace(/\/+$/,'/')!==location.pathname.replace(/\/+$/,'/'))continue;
+        if(!/^#pager\/import\/[A-Za-z0-9_-]{12,7000}$/.test(u.hash))continue;
+        const envelope=decodeB64(u.hash.slice('#pager/import/'.length));
+        if(envelope?.payload?.restaurant_id&&/^[0-9a-f]{64}$/.test(envelope.token))return u.hash;
+      }catch{}
+    }
+    throw Error(t('الصق رابط تأكيد الطلب الموجود برسالة واتساب.','הדביקו קישור אישור מהודעת WhatsApp.','Paste the WhatsApp order confirmation link.'));
+  }
   const utf8B64=x=>{
     const bytes=new TextEncoder().encode(x);
     let binary='';for(const b of bytes)binary+=String.fromCharCode(b);
@@ -106,13 +146,13 @@
   async function showImport(encoded){
     stop();
     let envelope;
-    try{envelope=decodeB64(encoded);if(!envelope?.payload||!/^[0-9a-f]{64}$/.test(envelope.token))throw Error('Bad token');}
+    try{envelope=decodeB64(encoded);if(!envelope?.payload||!/^[0-9a-f]{64}$/.test(envelope.token))throw Error('Bad token');rememberImport(encoded);}
     catch{root().innerHTML=heading('<div class="banner error">'+t('رابط تأكيد الطلب غير صالح','קישור אישור לא תקין','Invalid import link')+'</div>');return;}
     root().innerHTML=heading('<div class="pager-card">'+t('جاري التحقق من صلاحياتك…','בודק הרשאות…','Checking permissions…')+'</div>');
     try{
       const {data:{user}}=await sb.auth.getUser();
       if(!user){
-        root().innerHTML=heading('<div class="pager-card"><h2>'+t('سجّل دخولك أولًا','תחילה יש להתחבר','Sign in first')+'</h2><p>'+t('سجّل الدخول إلى لوحة مطعمك، وبعدين ارجع افتح رابط التأكيد من رسالة واتساب مرة ثانية.','יש להתחבר ואז לפתוח שוב את הקישור מה-WhatsApp.','Sign in, then reopen the confirmation link from WhatsApp.')+'</p><a class="btn gold" href="#login">'+t('تسجيل الدخول','התחברות','Sign in')+'</a></div>');return;
+        root().innerHTML=heading('<div class="pager-card"><h2>'+t('سجّل دخولك أولًا','תחילה יש להתחבר','Sign in first')+'</h2><p>'+t('سجّل الدخول بنفس المتصفح. بنرجعك تلقائيًا لشاشة تأكيد الطلب. وإذا غيّرت المتصفح انسخ الرابط وافتحه هناك.','יש להתחבר באותו דפדפן כדי לחזור לאישור.','Sign in in this same browser to resume confirmation. If you change browsers, copy the link and open it there.')+'</p><a class="btn gold" href="#login">'+t('تسجيل الدخول ومتابعة التأكيد','התחברות והמשך','Sign in and resume')+'</a> <button class="btn outline" data-pager-action="copy-import" data-encoded="'+esc(encoded)+'">'+t('نسخ رابط التأكيد','העתקת קישור','Copy confirmation link')+'</button></div>');return;
       }
       const p=envelope.payload;
       const rest=val(await sb.from('restaurants').select('id,name,slug').eq('id',p.restaurant_id).maybeSingle());
@@ -139,6 +179,7 @@
     try{
       const envelope=decodeB64(encoded);
       const result=val(await sb.rpc('pager_accept_from_whatsapp',{p_payload:envelope.payload,p_token:envelope.token}));
+      clearImport(encoded);
       const el=root().querySelector('#pager-import-result');
       if(el)el.innerHTML='<div class="banner">'+t('تم قبول الطلب بنجاح. صار يظهر بلوحة Smart Pager.','ההזמנה התקבלה ותופיע בלוח Smart Pager.','Order accepted. It is now in the Smart Pager dashboard.')+'</div><a class="btn soft" href="#app">'+t('افتح لوحة التحكم ثم تبويب Smart Pager','פתח את לוח Smart Pager','Open Smart Pager dashboard')+'</a>';
       button.remove();
@@ -163,8 +204,15 @@
       };
       const card=x=>'<article class="pager-order"><div class="pager-order-title"><strong>#'+esc(short(x.client_ref))+'</strong><span class="pager-status '+esc(x.status)+'">'+esc(statusLabels[x.status]||x.status)+'</span></div><p class="small muted">'+esc(dateFmt(x.created_at))+' · '+(x.order_type==='table'?t('طاولة ','שולחן ','Table ')+esc(x.table_no):t('تيك أواي','איסוף עצמי','Takeaway'))+'</p>'+
         '<p>'+((x.pager_order_items||[]).map(i=>esc(i.quantity)+'× '+esc(i.name)+(i.bread_option?' ('+esc(i.bread_option==='wrap'?'لفة':'بجيت')+')':'')).join(' · '))+'</p><div class="pager-order-title"><b>'+price(x.subtotal_ils)+'</b><div class="actions">'+buttons(x)+'</div></div></article>';
+      const pending=pendingImport(restaurant.id);
       panel.innerHTML='<section class="panel"><h2>📟 TAFRIVO Smart Pager</h2><p class="muted">'+t('تأكيد الطلبات يتم فقط بعد وصول رسالة واتساب. الضغط من الزبون وحده ما بضيف أي طلب للوحة.','הזמנה נכנסת למערכת רק אחרי אישור מתוך WhatsApp.','Orders enter this dashboard only after verified WhatsApp acceptance.')+'</p>'+
         '<label class="pager-switch"><input type="checkbox" id="pager-enabled" '+(enabled?'checked':'')+'> '+t('تفعيل Smart Pager لهذا المطعم','הפעלת Smart Pager למסעדה','Enable Smart Pager for this restaurant')+'</label><button class="btn gold" data-pager-action="save-settings">'+t('حفظ الإعداد','שמירת הגדרה','Save setting')+'</button>'+
+        '<div class="pager-import-tool">'+
+        (pending?'<div class="banner warn"><b>'+t('في طلب واتساب لسه بحاجة لتأكيدك.','הזמנה ממתינה לאישור.','WhatsApp order awaiting your review.')+'</b> <a class="btn gold small" href="#pager/import/'+esc(pending.encoded)+'">'+t('راجع الطلب','בדיקת ההזמנה','Review order')+'</a></div>':'')+
+        '<h3>'+t('تأكيد طلب من رسالة واتساب','אישור הזמנה מ-WhatsApp','Confirm order from WhatsApp')+'</h3>'+
+        '<p class="small muted">'+t('من رسالة واتساب اللي وصلت للمطعم، انسخ رابط تأكيد الطلب والصقه هون. بعد مراجعة الأصناف اضغط قبول. الدخول للحساب وحده مش بقبل الطلب.','יש להדביק קישור אישור מההודעה ולבדוק לפני הקבלה.','Copy the confirmation link from the WhatsApp message, paste it here, and verify before accepting.')+'</p>'+
+        '<textarea id="pager-import-input" rows="3" maxlength="10000" placeholder="'+t('الصق رابط التأكيد من رسالة واتساب','הדביקו קישור אישור','Paste the WhatsApp confirmation link')+'"></textarea>'+
+        '<button type="button" class="btn gold" data-pager-action="open-import">'+t('فتح شاشة التأكيد','פתיחת מסך האישור','Open confirmation screen')+'</button></div>'+
         '<p class="hint">'+t('تجريبي: الإشعار على صفحة المتابعة فقط، والتنبيه من المتصفح أثناء فتحها. ما بنرسل إشعارات خلفية حاليًا.','ניסוי: מעקב והתראות רק כשהדף פתוח.','Pilot: tracking page and foreground alerts only. No background push yet.')+'</p></section>'+
         '<div class="pager-summary"><div><strong>'+active.length+'</strong><span>'+t('طلبات نشطة','הזמנות פעילות','Active')+'</span></div><div><strong>'+orders.filter(x=>x.status==='ready').length+'</strong><span>'+t('جاهزة','מוכנות','Ready')+'</span></div><div><strong>'+orders.filter(x=>x.status==='collected').length+'</strong><span>'+t('تم التسليم','נמסרו','Collected')+'</span></div></div>'+
         '<section class="panel"><div class="flexbetween"><h2>'+t('الطلبات المقبولة','הזמנות שאושרו','Accepted orders')+'</h2><button class="btn outline small" data-pager-action="refresh">'+t('تحديث','רענון','Refresh')+'</button></div>'+
@@ -191,6 +239,15 @@
     const b=event.target.closest('[data-pager-action]');if(!b)return;
     event.preventDefault();
     if(b.dataset.pagerAction==='accept')accept(b.dataset.envelope,b).catch(err=>alert(msg(err)));
+    else if(b.dataset.pagerAction==='copy-import'){
+      const target=link('pager/import/'+b.dataset.encoded);
+      if(navigator.clipboard?.writeText)navigator.clipboard.writeText(target).then(()=>alert(t('تم نسخ الرابط','הקישור הועתק','Link copied'))).catch(()=>prompt('Copy link:',target));
+      else prompt('Copy link:',target);
+    }
+    else if(b.dataset.pagerAction==='open-import'){
+      try{location.hash=extractImportHash(ownerPanel?.querySelector('#pager-import-input')?.value||'');}
+      catch(err){alert(msg(err));}
+    }
     else if(b.dataset.pagerAction==='notify'){
       if(typeof Notification==='undefined')alert(t('إشعارات المتصفح غير متاحة','התראות לא זמינות','Notifications unavailable'));
       else Notification.requestPermission().then(v=>alert(v==='granted'?t('تم تفعيل إشعارات الصفحة المفتوحة','התראות הופעלו לדף פתוח','Foreground alerts enabled'):t('الإذن غير متاح','אין הרשאה','Permission not granted')));
@@ -199,5 +256,5 @@
       ownerAction(b).catch(err=>alert(msg(err)));
   });
   window.addEventListener('hashchange',()=>{if(!location.hash.startsWith('#pager/track/'))stop();});
-  window.TAFRIVO_PAGER={prepareCheckout,lastTracking,showTrackingLink,showTracking,showImport,renderOwner};
+  window.TAFRIVO_PAGER={prepareCheckout,lastTracking,showTrackingLink,showTracking,showImport,renderOwner,resumeAfterLogin,extractImportHash};
 })();
