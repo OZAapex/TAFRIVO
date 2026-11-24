@@ -1,0 +1,46 @@
+/* Isolated TAFRIVO Loyalty Club — emerald & gold */
+.loyalty-shell{background:#f5f7f2;color:#15362b;min-height:100vh;font-family:Cairo,system-ui,sans-serif}
+.loyalty-header{background:#092d23;color:#f6e8c7;padding:15px max(22px,calc((100vw - 920px)/2));display:flex;align-items:center;justify-content:space-between;gap:16px}
+.loyalty-brand{display:flex;align-items:center;gap:11px;color:#f3d6a0;font:900 23px Manrope,Cairo,sans-serif;letter-spacing:1px}
+.loyalty-brand img{border-radius:11px}
+.loyalty-back{border:1px solid #8ea999;border-radius:11px;padding:7px 13px;font-weight:800;font-size:12px;color:#fff}
+.loyalty-container{max-width:850px;margin:auto;padding:25px 16px 65px}
+.loyalty-panel{background:white;border-radius:20px;border:1px solid #dfebe1;box-shadow:0 8px 30px #0e352010;padding:25px;margin:17px 0}
+.loyalty-panel h2{font-size:22px;margin:0 0 12px}
+.loyalty-panel h1{font-size:31px;margin:3px}
+.loyalty-panel p{font-size:14px}
+.loyalty-medal{font-size:55px;color:#c39b4e}
+.loyalty-join{text-align:center;max-width:570px;margin:30px auto}
+.loyalty-reward{display:inline-block;border-radius:12px;padding:12px 17px;background:#fff4d9;color:#72521c;font-weight:900;margin:12px 0 23px}
+.loyalty-form{text-align:start}
+.loyalty-form>label:not(.loyalty-check){font-weight:800;font-size:13px;display:block;margin-bottom:6px}
+.loyalty-form>input,.loyalty-form input[type=number]{width:100%;border:1px solid #bccfc2;border-radius:11px;padding:12px;font:inherit;margin-bottom:12px;background:#fff}
+.loyalty-check{display:flex;gap:9px;align-items:flex-start;margin:14px 0;font-size:13px;line-height:1.6;text-align:start}
+.loyalty-check input{width:19px;height:19px;accent-color:#146246;flex-shrink:0;margin-top:2px}
+.loyalty-birthday{display:grid;grid-template-columns:1fr 1fr;gap:12px;text-align:start}
+.loyalty-pass{background:radial-gradient(circle at 5% 6%,#28684e,#092f24 62%);color:#fff;border:2px solid #d9b673;border-radius:24px;box-shadow:0 23px 40px #002c2140;padding:29px;text-align:center;overflow:hidden}
+.loyalty-pass-top{display:flex;align-items:center;justify-content:space-between;color:#e8c783;font-weight:900;letter-spacing:1px;font-size:12px}
+.loyalty-pass-name{font-size:29px;font-weight:900;margin:21px 0 14px;color:#fff}
+.loyalty-stamps{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:20px 0}
+.loyalty-stamp{font-size:23px;color:#d0dbc7;display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;background:#ffffff13;border:1px solid #ffffff58;border-radius:50%}
+.loyalty-stamp.earned{background:linear-gradient(135deg,#fbe8b7,#bb8f37);color:#1f432d;border-color:#f5d98f}
+.loyalty-pass-count{color:#f9d78e;font:900 25px Manrope,Cairo,sans-serif}
+.loyalty-pass p{color:#e6e8dc;margin:11px 0 21px}
+.loyalty-ready{background:#e9c46d;color:#153620;padding:10px 12px;border-radius:12px;font-weight:900;margin:14px 0}
+.loyalty-card-qr{display:flex;align-items:center;justify-content:center;margin:20px auto 12px;background:white;border:6px solid white;border-radius:15px;width:max-content;min-height:170px;color:#123f30}
+.loyalty-pass small{display:block;color:#c4d5c9;font-size:11px;margin:auto;max-width:330px}
+.loyalty-birthday-banner{margin:15px 0;padding:23px;background:#fff1cb;border:1px solid #dbb66c;color:#5a4213;border-radius:18px;text-align:center;font-weight:800}
+.loyalty-notice{padding:15px;border:1px solid #d9e9db;border-radius:13px;margin:10px 0;background:#f8fbf7}
+.loyalty-notice b{color:#104734}
+.loyalty-notice p{margin:5px 0;color:#2e4a3d}
+.loyalty-notice small{color:#718277}
+.loyalty-footer{text-align:center;padding:18px 5px;color:#708178;font-size:12px}
+.loyalty-menu-callout{display:flex;align-items:center;gap:16px;background:linear-gradient(118deg,#0d3b2d,#1a6246);border:2px solid #d5b470;border-radius:20px;padding:22px;color:#fff;margin:27px 0}
+.loyalty-menu-callout h3{margin:0;color:#f9e2a7}
+.loyalty-menu-callout p{margin:3px 0 0;color:#dceae1}
+.loyalty-menu-callout .btn{margin-inline-start:auto}
+.loyalty-star{font-size:33px}
+.loyalty-join-qr{display:inline-flex;align-items:center;justify-content:center;background:#fff;border:1px solid #ccd8ce;border-radius:13px;padding:10px;min-height:190px;min-width:190px}
+.loyalty-member small{color:#82988b;overflow-wrap:anywhere;font-size:10px}
+.loyalty-feedback:not(:empty){margin:16px 0}
+@media(max-width:600px){.loyalty-menu-callout{flex-wrap:wrap;padding:16px}.loyalty-menu-callout .btn{width:100%;margin:0}.loyalty-pass{padding:23px 15px}.loyalty-pass-top{font-size:10px}.loyalty-stamp{width:35px;height:35px;font-size:20px}.loyalty-panel{padding:17px}.loyalty-brand{font-size:19px}}
