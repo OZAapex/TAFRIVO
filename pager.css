@@ -51,3 +51,8 @@
 .pager-import-tool .banner{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .pager-import-tool textarea{display:block;width:100%;min-height:75px;max-width:100%;padding:12px;border-radius:11px;border:1px solid #b3c7b9;direction:ltr;text-align:left;font:500 13px system-ui,sans-serif;background:#fff;color:#153b2a;resize:vertical}
 .pager-import-tool>button{justify-self:start}
+
+/* Easy one-tap WhatsApp confirmation and short-code fallback */
+.pager-import-tool input#pager-short-code{display:block;width:100%;min-height:50px;padding:12px 15px;border-radius:12px;border:1px solid #b3c7b9;direction:ltr;text-align:center;font:800 18px Manrope,system-ui,sans-serif;letter-spacing:1px;background:#fff;color:#153b2a}
+.pager-import-tool .btn{white-space:normal;text-align:center}
+.pager-card .pager-pill{overflow-wrap:anywhere}
