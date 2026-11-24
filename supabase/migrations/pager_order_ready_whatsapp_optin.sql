@@ -1,4 +1,4 @@
--- Customer-controlled WhatsApp ready alerts. No number for users who did not opt in.
+-- Optional ready WhatsApp notification for customers who explicitly request it.
 ALTER TABLE public.pager_orders
   ADD COLUMN IF NOT EXISTS ready_whatsapp_consent boolean NOT NULL DEFAULT false,
   ADD COLUMN IF NOT EXISTS ready_whatsapp text;
@@ -9,7 +9,6 @@ ALTER TABLE public.pager_orders
     OR (ready_whatsapp_consent = false AND ready_whatsapp IS NULL)
   );
 
--- No public access to contact numbers. Existing owner-only RLS on pager_orders applies.
 CREATE OR REPLACE FUNCTION public.pager_prepare_short_order(p_payload jsonb,p_token text)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
 AS $$
@@ -29,74 +28,15 @@ BEGIN
  v_kind=p_payload->>'kind';
  v_table=nullif(btrim(coalesce(p_payload->>'table','')),'');
  v_note=btrim(coalesce(p_payload->>'note',''));
- -- Customer explicitly opts in to one order-ready WhatsApp message. Never infer a phone from the WhatsApp sender.
+ -- Explicit opt-in for a single ready message; server validates the phone.
  IF coalesce((p_payload->>'ready_whatsapp_consent')::boolean,false) THEN
-    IF coalesce(p_payload->>'ready_whatsapp','') !~ '^[1-9][0-9]{9,14}
- v_lang=coalesce(p_payload->>'lang','ar');
- IF v_rest IS NULL OR v_ref IS NULL OR v_issued IS NULL
- OR v_issued < now()-interval '10 minutes' OR v_issued > now()+interval '1 minute'
- OR v_kind NOT IN ('table','takeaway') OR v_lang NOT IN ('ar','he','en')
- OR (v_kind='table' AND (v_table IS NULL OR char_length(v_table)>32))
- OR (v_kind='takeaway' AND v_table IS NOT NULL)
- OR char_length(v_note)>240
- THEN RAISE EXCEPTION 'Invalid order details'; END IF;
- IF NOT EXISTS(SELECT 1 FROM public.pager_settings s JOIN public.restaurants r ON r.id=s.restaurant_id
- WHERE s.restaurant_id=v_rest AND s.enabled AND r.status='approved' AND r.is_published)
- THEN RAISE EXCEPTION 'Smart Pager not available'; END IF;
- -- Prune short-lived request data once it is safely older than the confirmation window.
- DELETE FROM public.pager_pending_requests WHERE expires_at < now()-interval '1 day';
- v_token_hash=encode(sha256(convert_to(p_token,'UTF8')),'hex');
- SELECT * INTO v_existing FROM public.pager_pending_requests
- WHERE client_ref=v_ref;
- IF FOUND THEN
-   IF v_existing.restaurant_id<>v_rest OR v_existing.tracking_hash<>v_token_hash
-      OR v_existing.payload<>p_payload THEN RAISE EXCEPTION 'Order reference already used'; END IF;
-   IF v_existing.expires_at<now() THEN RAISE EXCEPTION 'Order link expired; start a new request'; END IF;
-   RETURN jsonb_build_object('code',v_existing.confirmation_code,'client_ref',v_ref,'expires_at',v_existing.expires_at,'duplicate',true);
- END IF;
- IF EXISTS(SELECT 1 FROM public.pager_orders o WHERE o.client_ref=v_ref) THEN
-   RAISE EXCEPTION 'Order already accepted'; END IF;
- IF (SELECT count(*) FROM public.pager_pending_requests p
-     WHERE p.restaurant_id=v_rest AND p.created_at > now()-interval '10 minutes')>=120 THEN
-   RAISE EXCEPTION 'Too many new requests; try later or use WhatsApp directly'; END IF;
- IF jsonb_typeof(p_payload->'lines')<>'array' OR jsonb_array_length(p_payload->'lines') NOT BETWEEN 1 AND 12
- THEN RAISE EXCEPTION 'Invalid order lines'; END IF;
- FOR v_line IN SELECT value FROM jsonb_array_elements(p_payload->'lines') LOOP
-   IF jsonb_typeof(v_line)<>'object'
-      OR coalesce(v_line->>'qty','') !~ '^[1-9][0-9]?$'
-      OR coalesce(v_line->>'id','') !~ '^[0-9a-f-]{36}$'
-   THEN RAISE EXCEPTION 'Invalid item'; END IF;
-   v_qty=(v_line->>'qty')::int;
-   IF v_qty>20 THEN RAISE EXCEPTION 'Quantity too large'; END IF;
-   v_total_qty=v_total_qty+v_qty;
-   IF v_total_qty>40 THEN RAISE EXCEPTION 'Order too large for Smart Pager'; END IF;
-   v_bread=coalesce(v_line->>'option','');
-   IF v_bread NOT IN ('','wrap','baguette') THEN RAISE EXCEPTION 'Invalid bread option'; END IF;
-   BEGIN v_item_id=(v_line->>'id')::uuid;
-   EXCEPTION WHEN OTHERS THEN RAISE EXCEPTION 'Invalid item ID'; END;
-   v_key=v_item_id::text || '/' || v_bread;
-   IF v_key=ANY(v_keys) THEN RAISE EXCEPTION 'Repeated order line'; END IF;
-   v_keys=array_append(v_keys,v_key);
-   SELECT * INTO v_item FROM public.menu_items i
-     WHERE i.id=v_item_id AND i.restaurant_id=v_rest AND i.is_visible AND i.is_available;
-   IF NOT FOUND THEN RAISE EXCEPTION 'A dish is unavailable'; END IF;
-   IF (v_item.bread_choices_enabled AND v_bread NOT IN ('wrap','baguette'))
-      OR (NOT v_item.bread_choices_enabled AND v_bread<>'')
-   THEN RAISE EXCEPTION 'Bread option mismatch'; END IF;
-   v_total=v_total+v_qty*v_item.price_ils;
-   IF v_total>3000 THEN RAISE EXCEPTION 'Order too large for Smart Pager'; END IF;
- END LOOP;
- v_code=upper(encode(extensions.gen_random_bytes(8),'hex'));
- INSERT INTO public.pager_pending_requests(restaurant_id,client_ref,confirmation_code,tracking_hash,payload)
- VALUES(v_rest,v_ref,v_code,v_token_hash,p_payload);
- RETURN jsonb_build_object('code',v_code,'client_ref',v_ref,'expires_at',now()+interval '10 minutes','duplicate',false);
-END;
-$$;
-
-    THEN RAISE EXCEPTION 'Valid WhatsApp number required for notification'; END IF;
+   IF coalesce(p_payload->>'ready_whatsapp','') !~ '^[1-9][0-9]{9,14}$' THEN
+     RAISE EXCEPTION 'Valid WhatsApp number required for notification';
+   END IF;
  ELSE
-    IF nullif(coalesce(p_payload->>'ready_whatsapp',''),'') IS NOT NULL
-    THEN RAISE EXCEPTION 'WhatsApp contact requires explicit opt-in'; END IF;
+   IF nullif(coalesce(p_payload->>'ready_whatsapp',''),'') IS NOT NULL THEN
+     RAISE EXCEPTION 'WhatsApp contact requires explicit opt-in';
+   END IF;
  END IF;
  v_lang=coalesce(p_payload->>'lang','ar');
  IF v_rest IS NULL OR v_ref IS NULL OR v_issued IS NULL
@@ -190,7 +130,7 @@ BEGIN
  CASE WHEN v_kind='table' THEN v_table ELSE NULL END,v_note,v_lang,auth.uid(),
  coalesce((v_request.payload->>'ready_whatsapp_consent')::boolean,false),
  CASE WHEN coalesce((v_request.payload->>'ready_whatsapp_consent')::boolean,false)
-      THEN nullif(v_request.payload->>'ready_whatsapp','') ELSE NULL END)
+ THEN nullif(v_request.payload->>'ready_whatsapp','') ELSE NULL END)
  RETURNING id INTO v_order;
  FOR v_line IN SELECT value FROM jsonb_array_elements(v_request.payload->'lines') LOOP
    v_item_id=(v_line->>'id')::uuid; v_qty=(v_line->>'qty')::int; v_bread=coalesce(v_line->>'option','');
@@ -213,4 +153,3 @@ BEGIN
  RETURN jsonb_build_object('order_id',v_order,'duplicate',false,'total',v_total);
 END;
 $$;
-
