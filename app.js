@@ -575,7 +575,7 @@ function renderAdminLeads(){
     if(act==='delete-item'){const item=state.items.find(x=>x.id===id);if(!item||!confirm(`حذف «${item.name_ar||item.name_he}»؟`))return;try{need(await sb.from('menu_items').delete().eq('id',id));flash('تم حذف الأكلة');await loadOwner();}catch(err){flash(errText(err),'error');}return;}
     if(act==='copy'){try{await navigator.clipboard.writeText(el.dataset.value||'');flash('تم نسخ الرابط / المعرّف');}catch{prompt('انسخ النص:',el.dataset.value||'');}return;}
     if(act==='download-qr'){const canvas=document.querySelector('#qr-target canvas');if(!canvas){flash('رمز QR مش جاهز','error');return;}const a=document.createElement('a');a.href=canvas.toDataURL('image/png');a.download=`TAFRIVO-${state.restaurant.slug}-QR.png`;a.click();return;}
-    if(act==='lang'){state.lang=id;renderMenu();return;}
+    if(act==='lang'){state.lang=id;try{localStorage.setItem('tafrivo-lang',id)}catch{}renderMenu();return;}
     if(act==='scrollcat'){document.getElementById('cat-'+id)?.scrollIntoView({behavior:'smooth',block:'start'});return;}
     if(act==='cartadd'){
       const item=state.menu?.items.find(x=>x.id===id);
